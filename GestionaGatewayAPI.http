@@ -1,0 +1,6 @@
+@GestionaGatewayAPI_HostAddress = http://localhost:5123
+
+POST {{GestionaGatewayAPI_HostAddress}}/processes/upload?filename=example.pdf&process_id=12345
+Accept: application/json
+
+###
