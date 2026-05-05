@@ -28,7 +28,7 @@ public interface IGestionaApiClient
         string processId,
         CancellationToken cancellationToken);
 
-    Task<bool> CreateDocumentAndFolderAsync(
+    Task<CreateDocumentAndFolderResponse?> CreateDocumentAndFolderAsync(
         string gestionaApiBaseUrl,
         string accessToken,
         string fileId,

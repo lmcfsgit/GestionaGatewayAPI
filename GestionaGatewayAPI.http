@@ -1,6 +1,12 @@
 @GestionaGatewayAPI_HostAddress = http://localhost:5123
 
-POST {{GestionaGatewayAPI_HostAddress}}/processes/upload?filename=example.pdf&process_id=12345
+POST {{GestionaGatewayAPI_HostAddress}}/processes/documents?process_number=12345
 Accept: application/json
+
+{
+  "documentSourceType": "FILE",
+  "fileName": "example.pdf",
+  "name": "example.pdf"
+}
 
 ###

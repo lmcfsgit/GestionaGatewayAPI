@@ -1,12 +1,20 @@
-using Microsoft.AspNetCore.Mvc;
-
 namespace GestionaGatewayAPI.Models;
 
 public sealed class UploadDocumentRequest
 {
-    [FromQuery(Name = "filename")]
+    public string? Id { get; init; }
+
+    public string? OperationId { get; init; }
+
+    public string? DocumentSourceType { get; init; }
+
+    public string? Url { get; init; }
+
+    public string? Name { get; init; }
+
     public string? FileName { get; init; }
 
-    [FromQuery(Name = "process_id")]
-    public string? ProcessId { get; init; }
+    public string? Category { get; init; }
+
+    public string? ExternalReference { get; init; }
 }

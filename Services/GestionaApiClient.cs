@@ -236,7 +236,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return null;
     }
 
-    public async Task<bool> CreateDocumentAndFolderAsync(
+    public async Task<CreateDocumentAndFolderResponse?> CreateDocumentAndFolderAsync(
         string gestionaApiBaseUrl,
         string accessToken,
         string fileId,
@@ -286,10 +286,24 @@ public sealed class GestionaApiClient : IGestionaApiClient
 
         using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+        CreateDocumentAndFolderResponse? responseModel = null;
+        if (!string.IsNullOrWhiteSpace(responseBody))
+        {
+            responseModel = JsonSerializer.Deserialize<CreateDocumentAndFolderResponse>(responseBody);
+
+        }
+
         _logger.LogDebug(
             "Gestiona documents-and-folders response: StatusCode={StatusCode}, Body={Body}",
             response.StatusCode,
             responseBody);
+        if (responseModel is not null)
+        {
+            _logger.LogInformation(
+                "Gestiona documents-and-folders response model:{NewLine}{ResponseModel}",
+                Environment.NewLine,
+                JsonSerializer.Serialize(responseModel, new JsonSerializerOptions { WriteIndented = true }));
+        }
 
         if (!response.IsSuccessStatusCode)
         {
@@ -297,10 +311,10 @@ public sealed class GestionaApiClient : IGestionaApiClient
                 "Gestiona document creation failed for file {FileId} with status code {StatusCode}",
                 fileId,
                 response.StatusCode);
-            return false;
+            return null;
         }
 
-        return true;
+        return responseModel;
     }
 
     private static string NormalizeBaseUrl(string gestionaApiBaseUrl)

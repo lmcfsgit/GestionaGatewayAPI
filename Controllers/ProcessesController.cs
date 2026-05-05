@@ -1,6 +1,9 @@
 using GestionaGatewayAPI.Configuration;
 using GestionaGatewayAPI.Models;
 using GestionaGatewayAPI.Services;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -10,6 +13,12 @@ namespace GestionaGatewayAPI.Controllers;
 [Route("processes")]
 public sealed class ProcessesController : ControllerBase
 {
+    private static readonly JsonSerializerOptions LogJsonOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
     private readonly IConfiguration _configuration;
     private readonly GestionaOptions _gestionaOptions;
     private readonly IGestionaApiClient _gestionaApiClient;
@@ -27,9 +36,74 @@ public sealed class ProcessesController : ControllerBase
         _logger = logger;
     }
 
-    [HttpPost("upload")]
+    [HttpPost("documents")]
     public async Task<ActionResult<UploadDocumentResponse>> Upload(
-        [FromQuery] UploadDocumentRequest request,
+        [FromQuery(Name = "process_number")] string processNumber,
+        [FromBody] UploadDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Received upload request body for process lookup route {ProcessNumber}:{NewLine}{Request}",
+            processNumber,
+            Environment.NewLine,
+            JsonSerializer.Serialize(request, LogJsonOptions));
+
+        if (!string.Equals(request.DocumentSourceType, "FILE", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { error = "documentSourceType must be FILE." });
+        }
+
+        if (string.IsNullOrWhiteSpace(processNumber))
+        {
+            return BadRequest(new { error = "process_number query parameter is required." });
+        }
+
+        return await UploadDocumentCore(
+            request.OperationId,
+            request.Name,
+            request.FileName,
+            processNumber,
+            resolveFileIdFromProcessCode: true,
+            cancellationToken);
+    }
+
+    [HttpPost("{process_id}/documents")]
+    public async Task<ActionResult<UploadDocumentResponse>> UploadToFile(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromBody] UploadDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Received upload request body for direct file route {ProcessId}:{NewLine}{Request}",
+            processId,
+            Environment.NewLine,
+            JsonSerializer.Serialize(request, LogJsonOptions));
+
+        if (!string.Equals(request.DocumentSourceType, "FILE", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { error = "documentSourceType must be FILE." });
+        }
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return BadRequest(new { error = "process_id route parameter is required." });
+        }
+
+        return await UploadDocumentCore(
+            request.OperationId,
+            request.Name,
+            request.FileName,
+            processId,
+            resolveFileIdFromProcessCode: false,
+            cancellationToken);
+    }
+
+    private async Task<ActionResult<UploadDocumentResponse>> UploadDocumentCore(
+        string? operationId,
+        string? documentName,
+        string? fileName,
+        string processId,
+        bool resolveFileIdFromProcessCode,
         CancellationToken cancellationToken)
     {
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
@@ -59,47 +133,49 @@ public sealed class ProcessesController : ControllerBase
 
         // Directory.CreateDirectory(documentsFolder);
 
-        if (string.IsNullOrWhiteSpace(request.FileName))
+        if (string.IsNullOrWhiteSpace(fileName))
         {
-            return BadRequest(new { error = "filename query parameter is required." });
+            return BadRequest(new { error = "fileName is required in the request body." });
         }
 
-        if (string.IsNullOrWhiteSpace(request.ProcessId))
+        string? fileId = processId;
+        if (resolveFileIdFromProcessCode)
         {
-            return BadRequest(new { error = "process_id query parameter is required." });
+            // Resolve the Gestiona file identifier from the external process 
+            // code before creating the document.
+            fileId = await _gestionaApiClient.GetFileIdFromProcessCode(
+                gestionaApiBaseUrl,
+                accessToken,
+                processId,
+                cancellationToken);
+
+            if (fileId is null)
+            {
+                return Problem(
+                    detail: "Failed to resolve Gestiona file ID.",
+                    statusCode: StatusCodes.Status502BadGateway);
+            }
         }
 
-        // Resolve the Gestiona file identifier from the external process 
-        // code before creating the document.
-        var fileId = await _gestionaApiClient.GetFileIdFromProcessCode(
-            gestionaApiBaseUrl,
-            accessToken,
-            request.ProcessId,
-            cancellationToken);
-
-        if (fileId is null)
-        {
-            return Problem(
-                detail: "Failed to resolve Gestiona file ID.",
-                statusCode: StatusCodes.Status502BadGateway);
-        }
-
-        var safeFileName = Path.GetFileName(request.FileName);
-        if (!string.Equals(request.FileName, safeFileName, StringComparison.Ordinal))
+        var safeFileName = Path.GetFileName(fileName);
+        if (!string.Equals(fileName, safeFileName, StringComparison.Ordinal))
         {
             return BadRequest(new { error = "filename must not contain directory segments." });
         }
 
         var fullDocumentsFolder = Path.GetFullPath(documentsFolder);
+        var fullDocumentsFolderWithSeparator = fullDocumentsFolder.EndsWith(Path.DirectorySeparatorChar)
+            ? fullDocumentsFolder
+            : fullDocumentsFolder + Path.DirectorySeparatorChar;
         var fullPath = Path.GetFullPath(Path.Combine(fullDocumentsFolder, safeFileName));
-        if (!fullPath.StartsWith(fullDocumentsFolder, StringComparison.OrdinalIgnoreCase))
+        if (!fullPath.StartsWith(fullDocumentsFolderWithSeparator, StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { error = "filename resolves outside the configured document folder." });
         }
 
         if (!System.IO.File.Exists(fullPath))
         {
-            return NotFound(new { error = "Document not found.", filename = safeFileName, process_id = request.ProcessId });
+            return NotFound(new { error = "Document not found.", filename = safeFileName, process_id = processId });
         }
 
         // Read the document content from the file system.
@@ -132,8 +208,9 @@ public sealed class ProcessesController : ControllerBase
                 statusCode: StatusCodes.Status502BadGateway);
         }
 
+        // Prepare the request to create the document in Gestiona, using the uploaded content.
         var createDocumentRequest = new CreateDocumentInFileRequest(
-            Name: safeFileName,
+            Name: string.IsNullOrWhiteSpace(documentName) ? safeFileName : documentName,
             Type: "DIGITAL",
             MetadataLanguage: "ES",
             Trashed: "false",
@@ -141,25 +218,29 @@ public sealed class ProcessesController : ControllerBase
             ContentHref: ResolveUploadHref(gestionaApiBaseUrl, uploadLocation));
 
         // Create the document in the resolved Gestiona file, using the uploaded content.
-        var documentCreated = await _gestionaApiClient.CreateDocumentAndFolderAsync(
+        var createdDocument = await _gestionaApiClient.CreateDocumentAndFolderAsync(
             gestionaApiBaseUrl,
             accessToken,
             fileId,
             createDocumentRequest,
             cancellationToken);
 
-        if (!documentCreated)
+        if (createdDocument is null)
         {
             return Problem(
                 detail: "Failed to create document in Gestiona file.",
                 statusCode: StatusCodes.Status502BadGateway);
         }
 
+        // Return the details of the created document in the response.
         return Ok(new UploadDocumentResponse(
-            request.ProcessId,
-            safeFileName,
-            fullPath,
-            content.Length));
+            operationId,
+            true,
+            new UploadDocumentResult(
+                createdDocument.Id,
+                fileId,
+                FormatUnixTimestamp(createdDocument.CreationDate),
+                FormatUnixTimestamp(createdDocument.ModificationDate))));
     }
 
     private static string ResolveUploadHref(string gestionaApiBaseUrl, string uploadLocation)
@@ -174,5 +255,20 @@ public sealed class ProcessesController : ControllerBase
             : $"{gestionaApiBaseUrl}/";
 
         return new Uri(new Uri(normalizedBaseUrl, UriKind.Absolute), uploadLocation).ToString();
+    }
+
+    private static string FormatUnixTimestamp(string unixTimestamp)
+    {
+        if (!long.TryParse(unixTimestamp, out var unixSeconds))
+        {
+            return unixTimestamp;
+        }
+
+        var portugalTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
+        var portugalTime = TimeZoneInfo.ConvertTime(
+            DateTimeOffset.FromUnixTimeSeconds(unixSeconds),
+            portugalTimeZone);
+
+        return portugalTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
     }
 }
