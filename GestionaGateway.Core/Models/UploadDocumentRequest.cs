@@ -1,4 +1,6 @@
-namespace GestionaGatewayAPI.Models;
+using System.Text.Json.Serialization;
+
+namespace GestionaGateway.Core.Models;
 
 public sealed class UploadDocumentRequest
 {
@@ -13,6 +15,8 @@ public sealed class UploadDocumentRequest
     public string? Name { get; init; }
 
     public string? FileName { get; init; }
+
+    public string? Content { get; init; }
 
     public string? Category { get; init; }
 

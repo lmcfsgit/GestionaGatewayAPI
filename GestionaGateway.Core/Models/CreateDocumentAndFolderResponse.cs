@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace GestionaGatewayAPI.Models;
+namespace GestionaGateway.Core.Models;
 
 public sealed record CreateDocumentAndFolderResponse(
     [property: JsonPropertyName("id")] string Id,

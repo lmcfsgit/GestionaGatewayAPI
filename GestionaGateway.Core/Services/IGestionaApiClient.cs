@@ -1,6 +1,6 @@
-namespace GestionaGatewayAPI.Services;
+using GestionaGateway.Core.Models;
 
-using GestionaGatewayAPI.Models;
+namespace GestionaGateway.Core.Services;
 
 public interface IGestionaApiClient
 {
@@ -29,6 +29,13 @@ public interface IGestionaApiClient
         CancellationToken cancellationToken);
 
     Task<CreateDocumentAndFolderResponse?> CreateDocumentAndFolderAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        CreateDocumentInFileRequest request,
+        CancellationToken cancellationToken);
+
+    Task<CreateDocumentAndFolderResponse?> CreateDocumentUrlAsync(
         string gestionaApiBaseUrl,
         string accessToken,
         string fileId,

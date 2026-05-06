@@ -1,4 +1,4 @@
-namespace GestionaGatewayAPI.Configuration;
+namespace GestionaGateway.Core.Configuration;
 
 public sealed class GestionaOptions
 {
