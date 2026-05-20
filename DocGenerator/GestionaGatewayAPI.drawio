@@ -1,0 +1,332 @@
+<mxfile host="app.diagrams.net" pages="4">
+  <diagram name="Overview" id="6ni_X3dWdivqOKgE-yxQ">
+    <mxGraphModel dx="2502" dy="766" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Client Request" vertex="1">
+          <mxGeometry height="60" width="140" x="30" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="ASP.NET Core Pipeline&#xa;UseSerilogRequestLogging()" vertex="1">
+          <mxGeometry height="80" width="220" x="230" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="MapControllers()" vertex="1">
+          <mxGeometry height="70" width="140" x="510" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="ProcessesController&#xa;POST /processes/documents&#xa;POST /processes/{process_id}/documents" vertex="1">
+          <mxGeometry height="110" width="260" x="730" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="DocumentsController&#xa;GET /documents/{document_id}" vertex="1">
+          <mxGeometry height="110" width="260" x="730" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="IGestionaProcessService&#xa;GestionaProcessService" vertex="1">
+          <mxGeometry height="80" width="220" x="1070" y="345" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="IGestionaDocumentService&#xa;GestionaDocumentService" vertex="1">
+          <mxGeometry height="80" width="220" x="1070" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="IGestionaApiClient&#xa;GestionaApiClient" vertex="1">
+          <mxGeometry height="70" width="180" x="1350" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Gestiona API" vertex="1">
+          <mxGeometry height="60" width="140" x="1370" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" source="2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" source="3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="465" />
+              <mxPoint x="460" y="465" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="5" value="upload routes">
+          <mxGeometry relative="1" x="0.0244" y="15" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="570" y="385" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" value="download route">
+          <mxGeometry relative="1" x="0.4098" y="9" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="570" y="504" />
+              <mxPoint x="570" y="624" />
+            </Array>
+            <mxPoint x="570" y="524" as="sourcePoint" />
+            <mxPoint x="730" y="629" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="8">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1050" y="615" />
+              <mxPoint x="1050" y="615" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="18" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="9">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1180" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="POST processes-documents" id="qPGzhy6iwgGBBYCz3L38">
+    <mxGraphModel dx="6728" dy="958" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="POST /processes/documents&#xa;query: process_number&#xa;body: UploadDocumentRequest" vertex="1">
+          <mxGeometry height="90" width="190" x="-3590" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Middleware&#xa;UseSerilogRequestLogging()" vertex="1">
+          <mxGeometry height="70" width="200" x="-3340" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="ProcessesController.Upload()&#xa;- log request&#xa;- validate process_number&#xa;- call UploadDocumentCore(..., resolveFileIdFromProcessCode=true)" vertex="1">
+          <mxGeometry height="150" width="280" x="-3120" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="IGestionaProcessService&#xa;CreateDocumentInProcessAsync()" vertex="1">
+          <mxGeometry height="90" width="210" x="-2810" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="GestionaProcessService&#xa;- validate config&#xa;- resolve file id from process number&#xa;- choose DIGITAL or EXTERNAL_URL flow" vertex="1">
+          <mxGeometry height="170" width="230" x="-2570" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="IGestionaApiClient&#xa;GetFileIdFromProcessCode()" vertex="1">
+          <mxGeometry height="70" width="210" x="-2560" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Gestiona API&#xa;GET /files&#xa;filter exact_code" vertex="1">
+          <mxGeometry height="60" width="180" x="-2020" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="DIGITAL path&#xa;1. GetUploadFileAsync()&#xa;2. CreateUploadSpaceAsync()&#xa;3. UploadDocumentContentAsync()&#xa;4. CreateDocumentAndFolderAsync()" vertex="1">
+          <mxGeometry height="150" width="250" x="-2580" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="EXTERNAL_URL path&#xa;CreateDocumentUrlAsync()" vertex="1">
+          <mxGeometry height="80" width="250" x="-2210" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Gestiona API&#xa;POST /uploads&#xa;PUT upload URL&#xa;POST /files/{fileId}/documents-and-folders" vertex="1">
+          <mxGeometry height="120" width="180" x="-2020" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Success&#xa;UploadDocumentResponse&#xa;operationId + document result" vertex="1">
+          <mxGeometry height="80" width="220" x="-2050" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Failure&#xa;UploadDocumentResponse&#xa;mapped from FailureKind / UpstreamStatusCode" vertex="1">
+          <mxGeometry height="90" width="250" x="-2410" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="14" edge="1" parent="1" source="2" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="15" edge="1" parent="1" source="3" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="17" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="18" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="7" value="resolve file id">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="19" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="9" value="DIGITAL">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="10" value="EXTERNAL_URL">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="-2120" y="365" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="24" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.003;entryY=0.634;entryDx=0;entryDy=0;entryPerimeter=0;exitX=1;exitY=0.353;exitDx=0;exitDy=0;exitPerimeter=0;" target="12" value="service success">
+          <mxGeometry relative="1" x="0.1028" y="-9" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="-2330" y="340" as="sourcePoint" />
+            <mxPoint x="-2068.0200000000004" y="307.27" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="25" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="13" value="service failure">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-2320" y="400" as="sourcePoint" />
+            <mxPoint x="-2070" y="855" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="POST processes-processid-documents" id="TuWSuh3CaaAGmDgR5xL6">
+    <mxGraphModel dx="2502" dy="766" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="POST /processes/{process_id}/documents&#xa;body: UploadDocumentRequest" vertex="1">
+          <mxGeometry height="80" width="220" x="20" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Middleware&#xa;UseSerilogRequestLogging()" vertex="1">
+          <mxGeometry height="70" width="200" x="270" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="ProcessesController.UploadToFile()&#xa;- log request&#xa;- validate process_id&#xa;- reject {{process_id}}&#xa;- call UploadDocumentCore(..., resolveFileIdFromProcessCode=false)" vertex="1">
+          <mxGeometry height="180" width="300" x="540" y="415" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="IGestionaProcessService&#xa;CreateDocumentInProcessAsync()" vertex="1">
+          <mxGeometry height="90" width="220" x="580" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="GestionaProcessService&#xa;- uses route process_id as fileId&#xa;- skips GetFileIdFromProcessCode&#xa;- DIGITAL or EXTERNAL_URL flow" vertex="1">
+          <mxGeometry height="180" width="270" x="900" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="IGestionaApiClient&#xa;CreateUploadSpace / UploadDocumentContent / CreateDocumentAndFolder&#xa;or CreateDocumentUrl" vertex="1">
+          <mxGeometry height="140" width="260" x="905" y="475" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Gestiona API" vertex="1">
+          <mxGeometry height="70" width="240" x="1320" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Success&#xa;UploadDocumentResponse" vertex="1">
+          <mxGeometry height="70" width="220" x="1330" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" source="2" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" source="3" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="13" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="14" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="15" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" edge="1" parent="1" style="html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="8">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1165" y="540" as="sourcePoint" />
+            <mxPoint x="1340" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aBuOHghpg_wotmkAjqeD-18" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="10" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1170" y="230" />
+            </Array>
+            <mxPoint x="1170" y="230" as="sourcePoint" />
+            <mxPoint x="1445" y="605" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Failure&#xa;400 / 404 / 500 / 502 or upstream code" vertex="1">
+          <mxGeometry height="80" width="230" x="1330" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="aBuOHghpg_wotmkAjqeD-19" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="9" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1320" y="335" />
+              <mxPoint x="1320" y="335" />
+            </Array>
+            <mxPoint x="1170" y="335" as="sourcePoint" />
+            <mxPoint x="1330" y="357.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="GET documents-documentid" id="7mVLh-mXPhR5I0WgFm7M">
+    <mxGraphModel dx="2944" dy="901" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="GET /documents/{document_id}?operationId=..." vertex="1">
+          <mxGeometry height="80" width="220" x="30" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Middleware&#xa;UseSerilogRequestLogging()" vertex="1">
+          <mxGeometry height="70" width="200" x="310" y="435" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="DocumentsController.DownloadDocument()&#xa;- log request&#xa;- validate document_id&#xa;- reject {{document_id}}" vertex="1">
+          <mxGeometry height="130" width="250" x="570" y="405" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="IGestionaDocumentService&#xa;DownloadDocumentAsync()" vertex="1">
+          <mxGeometry height="80" width="210" x="860" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="GestionaDocumentService&#xa;- validate config&#xa;- call API client&#xa;- map failure to DownloadDocumentResult" vertex="1">
+          <mxGeometry height="140" width="260" x="1110" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="IGestionaApiClient&#xa;DownloadDocumentAsync()" vertex="1">
+          <mxGeometry height="80" width="200" x="1460" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Gestiona API&#xa;GET /content/small/documentinstances/{documentId}" vertex="1">
+          <mxGeometry height="90" width="270" x="1410" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Success response&#xa;Binary file body&#xa;Headers: Content-Type, Content-Disposition, X-Operation-Id?, X-Storage-Extension?" vertex="1">
+          <mxGeometry height="110" width="290" x="1095" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Failure response&#xa;UploadDocumentResponse error envelope&#xa;status from FailureKind / UpstreamStatusCode" vertex="1">
+          <mxGeometry height="110" width="290" x="820" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="11" edge="1" parent="1" source="2" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" edge="1" parent="1" source="3" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="13" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="14" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="15" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="17" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="695" y="360" />
+              <mxPoint x="920" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;" target="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="19" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="355" />
+              <mxPoint x="930" y="355" />
+            </Array>
+            <mxPoint x="1240" y="400" as="sourcePoint" />
+            <mxPoint x="930" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

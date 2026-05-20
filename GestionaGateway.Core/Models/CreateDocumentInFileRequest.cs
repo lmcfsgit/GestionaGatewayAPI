@@ -15,4 +15,6 @@ public sealed record CreateDocumentInFileRequest
     public string? ExternalUrl { get; init; }
 
     public string? ContentHref { get; init; }
+
+    public string? Line { get; init; }
 }

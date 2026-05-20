@@ -1,0 +1,207 @@
+<mxfile host="app.diagrams.net" modified="2026-05-15T12:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="overview" name="Overview">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="Client Request" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="170" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="ASP.NET Core Pipeline&#10;UseSerilogRequestLogging()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="240" y="160" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="MapControllers()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="520" y="170" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="ProcessesController&#10;POST /processes/documents&#10;POST /processes/{process_id}/documents" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="740" y="70" width="260" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="DocumentsController&#10;GET /documents/{document_id}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="740" y="240" width="260" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="IGestionaProcessService&#10;GestionaProcessService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="85" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="IGestionaDocumentService&#10;GestionaDocumentService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="245" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="IGestionaApiClient&#10;GestionaApiClient" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="160" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="Gestiona API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="165" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="2" target="3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="3" target="4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="upload routes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="4" target="5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="14" value="download route" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="4" target="6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="5" target="7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="6" target="8">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="7" target="9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="8" target="9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="9" target="10">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uploadByNumber" name="POST processes-documents">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="POST /processes/documents&#10;query: process_number&#10;body: UploadDocumentRequest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="30" y="150" width="190" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="Middleware&#10;UseSerilogRequestLogging()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="280" y="160" width="200" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="ProcessesController.Upload()&#10;- log request&#10;- validate process_number&#10;- call UploadDocumentCore(..., resolveFileIdFromProcessCode=true)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="540" y="120" width="280" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="IGestionaProcessService&#10;CreateDocumentInProcessAsync()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="890" y="150" width="210" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="GestionaProcessService&#10;- validate config&#10;- resolve file id from process number&#10;- choose DIGITAL or EXTERNAL_URL flow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="110" width="260" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="IGestionaApiClient&#10;GetFileIdFromProcessCode()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1490" y="30" width="210" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="Gestiona API&#10;GET /files&#10;filter exact_code" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1770" y="35" width="180" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="DIGITAL path&#10;1. GetUploadFileAsync()&#10;2. CreateUploadSpaceAsync()&#10;3. UploadDocumentContentAsync()&#10;4. CreateDocumentAndFolderAsync()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1490" y="130" width="250" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="EXTERNAL_URL path&#10;CreateDocumentUrlAsync()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1490" y="320" width="250" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="Gestiona API&#10;POST /uploads&#10;PUT upload URL&#10;POST /files/{fileId}/documents-and-folders" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1770" y="180" width="180" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="12" value="Success&#10;UploadDocumentResponse&#10;operationId + document result" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1490" y="450" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="Failure&#10;UploadDocumentResponse&#10;mapped from FailureKind / UpstreamStatusCode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1490" y="560" width="250" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="2" target="3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="15" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="3" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="16" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="4" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="17" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="5" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="18" value="resolve file id" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="19" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="7" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="20" value="DIGITAL" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="21" value="EXTERNAL_URL" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="22" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="9" target="11"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="23" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="10" target="11"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="24" value="service success" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="12"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="25" value="service failure" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="13"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="uploadDirect" name="POST processes-processid-documents">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="POST /processes/{process_id}/documents&#10;body: UploadDocumentRequest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="170" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="Middleware&#10;UseSerilogRequestLogging()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="175" width="200" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="ProcessesController.UploadToFile()&#10;- log request&#10;- validate process_id&#10;- reject {{process_id}}&#10;- call UploadDocumentCore(..., resolveFileIdFromProcessCode=false)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="580" y="120" width="300" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="IGestionaProcessService&#10;CreateDocumentInProcessAsync()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="950" y="165" width="220" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="GestionaProcessService&#10;- uses route process_id as fileId&#10;- skips GetFileIdFromProcessCode&#10;- DIGITAL or EXTERNAL_URL flow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="120" width="270" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="IGestionaApiClient&#10;CreateUploadSpace / UploadDocumentContent / CreateDocumentAndFolder&#10;or CreateDocumentUrl" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="140" width="260" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="Gestiona API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1880" y="175" width="130" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="Success&#10;UploadDocumentResponse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="360" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="Failure&#10;400 / 404 / 500 / 502 or upstream code" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="460" width="230" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="2" target="3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="12" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="3" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="4" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="5" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="15" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="16" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="7" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="17" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="18" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="10"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="download" name="GET documents-documentid">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="2" value="GET /documents/{document_id}?operationId=..." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="30" y="150" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="Middleware&#10;UseSerilogRequestLogging()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="310" y="155" width="200" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="DocumentsController.DownloadDocument()&#10;- log request&#10;- validate document_id&#10;- reject {{document_id}}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="570" y="125" width="280" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="IGestionaDocumentService&#10;DownloadDocumentAsync()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="920" y="150" width="210" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="GestionaDocumentService&#10;- validate config&#10;- call API client&#10;- map failure to DownloadDocumentResult" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="120" width="260" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="IGestionaApiClient&#10;DownloadDocumentAsync()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="150" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="Gestiona API&#10;GET /content/small/documentinstances/{documentId}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1780" y="145" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="Success response&#10;Binary file body&#10;Headers: Content-Type, Content-Disposition, X-Operation-Id?, X-Storage-Extension?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="330" width="290" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="Failure response&#10;UploadDocumentResponse error envelope&#10;status from FailureKind / UpstreamStatusCode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="480" width="290" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="2" target="3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="12" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="3" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="4" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="14" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="5" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="15" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="16" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="7" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="17" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="4" target="10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="18" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="19" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="6" target="10"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

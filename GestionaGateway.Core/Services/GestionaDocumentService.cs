@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text.Json;
 using GestionaGateway.Core.Configuration;
 using GestionaGateway.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -7,12 +5,21 @@ using Microsoft.Extensions.Options;
 
 namespace GestionaGateway.Core.Services;
 
+/// <summary>
+/// Provides document download workflows for the Gestiona API.
+/// </summary>
 public sealed class GestionaDocumentService : IGestionaDocumentService
 {
     private readonly GestionaOptions _gestionaOptions;
     private readonly IGestionaApiClient _gestionaApiClient;
     private readonly ILogger<GestionaDocumentService> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GestionaDocumentService"/> class.
+    /// </summary>
+    /// <param name="gestionaOptions">The configured Gestiona options.</param>
+    /// <param name="gestionaApiClient">The client used to communicate with the Gestiona API.</param>
+    /// <param name="logger">The logger used for operational and diagnostic events.</param>
     public GestionaDocumentService(
         IOptions<GestionaOptions> gestionaOptions,
         IGestionaApiClient gestionaApiClient,
@@ -23,313 +30,97 @@ public sealed class GestionaDocumentService : IGestionaDocumentService
         _logger = logger;
     }
 
-    public async Task<CreateDocumentInProcessResult> CreateDocumentInProcessAsync(
-        UploadDocumentRequest request,
-        string processId,
-        bool resolveFileIdFromProcessCode,
-        string documentsFolder,
+    /// <summary>
+    /// Downloads a document from Gestiona.
+    /// </summary>
+    /// <param name="documentId">The identifier of the document to download.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The result of the document download workflow.</returns>
+    public async Task<DownloadDocumentResult> DownloadDocumentAsync(
+        string documentId,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "CreateDocumentInProcess started. ProcessId={ProcessId}, ResolveFileIdFromProcessCode={ResolveFileIdFromProcessCode}, DocumentSourceType={DocumentSourceType}, FileName={FileName}, HasContent={HasContent}, HasExternalUrl={HasExternalUrl}",
-            processId,
-            resolveFileIdFromProcessCode,
-            request.DocumentSourceType,
-            request.FileName,
-            !string.IsNullOrWhiteSpace(request.Content),
-            !string.IsNullOrWhiteSpace(request.Url));
+            "({Method}) started. DocumentId={DocumentId}",
+            nameof(DownloadDocumentAsync),
+            documentId);
 
-        // Read configuration values
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
         var accessToken = _gestionaOptions.AccessToken;
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
-            _logger.LogWarning("CreateDocumentInProcess failed at step {Step} for process {ProcessId}", "ValidateConfiguration:GestionaApiBaseUrl", processId);
-            return Failure(CreateDocumentInProcessFailureKind.Configuration, "Gestiona API base URL is not configured.");
+            _logger.LogWarning("({Method}) failed at step {Step} for document {DocumentId}", nameof(DownloadDocumentAsync), "ValidateConfiguration:GestionaApiBaseUrl", documentId);
+            return DownloadFailure(DownloadDocumentFailureKind.Configuration, "Gestiona API base URL is not configured.");
         }
 
         if (string.IsNullOrWhiteSpace(accessToken))
         {
-            _logger.LogWarning("CreateDocumentInProcess failed at step {Step} for process {ProcessId}", "ValidateConfiguration:AccessToken", processId);
-            return Failure(CreateDocumentInProcessFailureKind.Configuration, "Gestiona access token is not configured.");
+            _logger.LogWarning("({Method}) failed at step {Step} for document {DocumentId}", nameof(DownloadDocumentAsync), "ValidateConfiguration:AccessToken", documentId);
+            return DownloadFailure(DownloadDocumentFailureKind.Configuration, "Gestiona access token is not configured.");
         }
 
-        // Resolve file ID from process number if needed or use process ID as file ID
-        string? fileId = processId;
-        if (resolveFileIdFromProcessCode)
+        if (string.IsNullOrWhiteSpace(documentId))
         {
-            _logger.LogDebug("Resolving Gestiona file id for process {ProcessId}", processId);
-
-            fileId = await _gestionaApiClient.GetFileIdFromProcessCode(
-                gestionaApiBaseUrl,
-                accessToken,
-                processId,
-                cancellationToken);
-
-            if (fileId is null)
-            {
-                _logger.LogWarning("CreateDocumentInProcess failed at step {Step} for process {ProcessId}", "ResolveFileIdFromProcessCode", processId);
-                return Failure(CreateDocumentInProcessFailureKind.Upstream, "Failed to resolve Gestiona file ID.");
-            }
-
-            _logger.LogInformation("Resolved Gestiona file id {FileId} for process {ProcessId}", fileId, processId);
+            _logger.LogWarning("({Method}) failed at step {Step}", nameof(DownloadDocumentAsync), "ValidateDocumentId");
+            return DownloadFailure(DownloadDocumentFailureKind.Validation, "documentId is required.");
         }
 
-        var documentName = string.IsNullOrWhiteSpace(request.Name)
-            ? "document"
-            : request.Name;
+        var downloadResult = await _gestionaApiClient.DownloadDocumentAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            documentId,
+            cancellationToken);
 
-        var createDocumentRequest = new CreateDocumentInFileRequest
+        if (!downloadResult.Success)
         {
-            Name = documentName,
-            MetadataLanguage = "ES",
-            Trashed = "false",
-            Version = "1"
-        };
-
-        CreateDocumentAndFolderResponse? createdDocument;
-        if (string.Equals(request.DocumentSourceType, "DIGITAL", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogDebug("Using DIGITAL document flow for process {ProcessId}", processId);
-
-            // Get document content either from base64 string or from file system
-            // If both are provided, base64 content takes precedence over file system content
-            var uploadFile = await GetUploadFileAsync(
-                request.FileName,
-                request.Content,
-                documentsFolder,
-                cancellationToken);
-            if (uploadFile.FailureResult is not null)
-            {
-                _logger.LogWarning("CreateDocumentInProcess failed at step {Step} for process {ProcessId}: {ErrorMessage}", "GetUploadFile", processId, uploadFile.FailureResult.ErrorMessage);
-                return uploadFile.FailureResult;
-            }
-
-            var content = uploadFile.Content!;
-
-            _logger.LogDebug(
-                "Uploading document content. Source={Source}, FileName={FileName}, ContentLength={ContentLength}",
-                string.IsNullOrWhiteSpace(request.Content) ? "file" : "base64",
-                request.FileName,
-                content.Length);
-
-            var uploadLocation = await _gestionaApiClient.CreateUploadSpaceAsync(
-                gestionaApiBaseUrl,
-                accessToken,
-                cancellationToken);
-            if (uploadLocation is null)
-            {
-                _logger.LogWarning("CreateDocumentInProcess failed at step {Step} for process {ProcessId}", "CreateUploadSpace", processId);
-                return Failure(CreateDocumentInProcessFailureKind.Upstream, "Failed to create upload space in Gestiona.");
-            }
-
-            var uploadSucceeded = await _gestionaApiClient.UploadDocumentContentAsync(
-                gestionaApiBaseUrl,
-                uploadLocation,
-                accessToken,
-                content,
-                cancellationToken);
-            if (!uploadSucceeded)
-            {
-                _logger.LogWarning("CreateDocumentInProcess failed at step {Step} for process {ProcessId}", "UploadDocumentContent", processId);
-                return Failure(CreateDocumentInProcessFailureKind.Upstream, "Failed to upload document content to Gestiona.");
-            }
-
-            createDocumentRequest = createDocumentRequest with
-            {
-                Type = "DIGITAL",
-                ContentHref = ResolveUploadHref(gestionaApiBaseUrl, uploadLocation)
-            };
-
-            _logger.LogDebug(
-                "CreateDocumentRequest for DIGITAL:{NewLine}{CreateDocumentRequest}",
-                Environment.NewLine,
-                JsonSerializer.Serialize(createDocumentRequest, new JsonSerializerOptions { WriteIndented = true }));
-
-            createdDocument = await _gestionaApiClient.CreateDocumentAndFolderAsync(
-                gestionaApiBaseUrl,
-                accessToken,
-                fileId,
-                createDocumentRequest,
-                cancellationToken);
-        }
-        else
-        {
-            _logger.LogDebug("Using EXTERNAL_URL document flow for process {ProcessId}", processId);
-
-            createDocumentRequest = createDocumentRequest with
-            {
-                Type = "EXTERNAL_URL",
-                ExternalUrl = request.Url
-            };
-
-            _logger.LogDebug(
-                "CreateDocumentRequest for EXTERNAL_URL:{NewLine}{CreateDocumentRequest}",
-                Environment.NewLine,
-                JsonSerializer.Serialize(createDocumentRequest, new JsonSerializerOptions { WriteIndented = true }));
-
-            createdDocument = await _gestionaApiClient.CreateDocumentUrlAsync(
-                gestionaApiBaseUrl,
-                accessToken,
-                fileId,
-                createDocumentRequest,
-                cancellationToken);
+            _logger.LogWarning("({Method}) failed at step {Step} for document {DocumentId}", nameof(DownloadDocumentAsync), "DownloadDocumentFromGestiona", documentId);
+            var failureKind = downloadResult.StatusCode == 404
+                ? DownloadDocumentFailureKind.NotFound
+                : DownloadDocumentFailureKind.Upstream;
+            return DownloadFailure(
+                failureKind,
+                $"Failed to download document from Gestiona: {documentId}.",
+                downloadResult.StatusCode);
         }
 
-        if (createdDocument is null)
+        if (downloadResult.Value is null)
         {
-            _logger.LogWarning("CreateDocumentInProcess failed at step {Step} for process {ProcessId}", "CreateDocumentInGestiona", processId);
-            return Failure(CreateDocumentInProcessFailureKind.Upstream, "Failed to create document in Gestiona file.");
+            _logger.LogWarning("({Method}) failed at step {Step} for document {DocumentId}", nameof(DownloadDocumentAsync), "DownloadDocumentFromGestiona", documentId);
+            return DownloadFailure(
+                DownloadDocumentFailureKind.Upstream,
+                $"Failed to download document from Gestiona: {documentId}.",
+                downloadResult.StatusCode);
         }
 
         _logger.LogInformation(
-            "CreateDocumentInProcess succeeded. ProcessId={ProcessId}, FileId={FileId}, DocumentId={DocumentId}, SourceType={DocumentSourceType}",
-            processId,
-            fileId,
-            createdDocument.Id,
-            request.DocumentSourceType);
+            "({Method}) succeeded. DocumentId={DocumentId}, FileName={FileName}, ContentType={ContentType}, ContentLength={ContentLength}",
+            nameof(DownloadDocumentAsync),
+            documentId,
+            downloadResult.Value.FileName,
+            downloadResult.Value.ContentType,
+            downloadResult.Value.Content.Length);
 
-        _logger.LogDebug(
-            "Created Gestiona document payload:{NewLine}{CreatedDocument}",
-            Environment.NewLine,
-            JsonSerializer.Serialize(createdDocument, new JsonSerializerOptions { WriteIndented = true }));
-
-        return new CreateDocumentInProcessResult(
+        return new DownloadDocumentResult(
             true,
-            CreateDocumentInProcessFailureKind.None,
+            DownloadDocumentFailureKind.None,
             null,
-            new CreateDocumentInProcessDocument(
-                createdDocument.Id,
-                fileId,
-                FormatUnixTimestamp(createdDocument.CreationDate),
-                FormatUnixTimestamp(createdDocument.ModificationDate)));
+            downloadResult.Value,
+            null);
     }
 
-    private static CreateDocumentInProcessResult Failure(
-        CreateDocumentInProcessFailureKind failureKind,
-        string errorMessage)
+    /// <summary>
+    /// Creates a standardized failure result for the document download workflow.
+    /// </summary>
+    /// <param name="failureKind">The category of failure.</param>
+    /// <param name="errorMessage">The human-readable error message.</param>
+    /// <param name="upstreamStatusCode">The optional HTTP status code returned by the upstream API.</param>
+    /// <returns>A failed <see cref="DownloadDocumentResult"/> instance.</returns>
+    private static DownloadDocumentResult DownloadFailure(
+        DownloadDocumentFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
     {
-        return new CreateDocumentInProcessResult(false, failureKind, errorMessage, null);
+        return new DownloadDocumentResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
-
-    private static async Task<UploadFileResult> GetUploadFileAsync(
-        string? fileName,
-        string? base64Content,
-        string documentsFolder,
-        CancellationToken cancellationToken)
-    {
-        if (!string.IsNullOrWhiteSpace(base64Content))
-        {
-            try
-            {
-                var binaryContent = Convert.FromBase64String(base64Content);
-                return new UploadFileResult(null, null, binaryContent);
-            }
-            catch (FormatException)
-            {
-                return new UploadFileResult(
-                    Failure(CreateDocumentInProcessFailureKind.Validation, "content must be a valid base64 string."),
-                    null,
-                    null);
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(documentsFolder))
-        {
-            return new UploadFileResult(
-                Failure(CreateDocumentInProcessFailureKind.Configuration, "Document storage path is not configured."),
-                null,
-                null);
-        }
-
-        if (string.IsNullOrWhiteSpace(fileName))
-        {
-            return new UploadFileResult(
-                Failure(CreateDocumentInProcessFailureKind.Validation, "fileName is required in the request body."),
-                null,
-                null);
-        }
-
-        var safeFileName = GetSafeFileName(fileName);
-        if (safeFileName is null)
-        {
-            return new UploadFileResult(
-                Failure(CreateDocumentInProcessFailureKind.Validation, "filename must not contain directory segments."),
-                null,
-                null);
-        }
-
-        var fullDocumentsFolder = Path.GetFullPath(documentsFolder);
-        var fullDocumentsFolderWithSeparator = fullDocumentsFolder.EndsWith(Path.DirectorySeparatorChar)
-            ? fullDocumentsFolder
-            : fullDocumentsFolder + Path.DirectorySeparatorChar;
-        var fullPath = Path.GetFullPath(Path.Combine(fullDocumentsFolder, safeFileName!));
-
-        if (!fullPath.StartsWith(fullDocumentsFolderWithSeparator, StringComparison.OrdinalIgnoreCase))
-        {
-            return new UploadFileResult(
-                Failure(CreateDocumentInProcessFailureKind.Validation, "filename resolves outside the configured document folder."),
-                null,
-                null);
-        }
-
-        if (!File.Exists(fullPath))
-        {
-            return new UploadFileResult(
-                Failure(CreateDocumentInProcessFailureKind.NotFound, $"Document not found: {safeFileName}"),
-                null,
-                null);
-        }
-
-        var content = await File.ReadAllBytesAsync(fullPath, cancellationToken);
-        return new UploadFileResult(null, safeFileName, content);
-    }
-
-    private static string? GetSafeFileName(string? fileName)
-    {
-        if (string.IsNullOrWhiteSpace(fileName))
-        {
-            return null;
-        }
-
-        var safeFileName = Path.GetFileName(fileName);
-        return string.Equals(fileName, safeFileName, StringComparison.Ordinal)
-            ? safeFileName
-            : null;
-    }
-
-    private static string ResolveUploadHref(string gestionaApiBaseUrl, string uploadLocation)
-    {
-        if (Uri.TryCreate(uploadLocation, UriKind.Absolute, out var absoluteUploadUri))
-        {
-            return absoluteUploadUri.ToString();
-        }
-
-        var normalizedBaseUrl = gestionaApiBaseUrl.EndsWith("/", StringComparison.Ordinal)
-            ? gestionaApiBaseUrl
-            : $"{gestionaApiBaseUrl}/";
-
-        return new Uri(new Uri(normalizedBaseUrl, UriKind.Absolute), uploadLocation).ToString();
-    }
-
-    private static string FormatUnixTimestamp(string unixTimestamp)
-    {
-        if (!long.TryParse(unixTimestamp, out var unixSeconds))
-        {
-            return unixTimestamp;
-        }
-
-        var portugalTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
-        var portugalTime = TimeZoneInfo.ConvertTime(
-            DateTimeOffset.FromUnixTimeSeconds(unixSeconds),
-            portugalTimeZone);
-
-        return portugalTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-    }
-
-    private sealed record UploadFileResult(
-        CreateDocumentInProcessResult? FailureResult,
-        string? SafeFileName,
-        byte[]? Content);
 }

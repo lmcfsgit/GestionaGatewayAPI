@@ -4,10 +4,7 @@ namespace GestionaGateway.Core.Services;
 
 public interface IGestionaDocumentService
 {
-    Task<CreateDocumentInProcessResult> CreateDocumentInProcessAsync(
-        UploadDocumentRequest request,
-        string processId,
-        bool resolveFileIdFromProcessCode,
-        string documentsFolder,
+    Task<DownloadDocumentResult> DownloadDocumentAsync(
+        string documentId,
         CancellationToken cancellationToken);
 }

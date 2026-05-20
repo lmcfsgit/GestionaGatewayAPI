@@ -37,6 +37,7 @@ public sealed class Program
         builder.Services.AddControllers();
         builder.Services.AddHttpClient();
         builder.Services.AddScoped<IGestionaApiClient, GestionaApiClient>();
+        builder.Services.AddScoped<IGestionaProcessService, GestionaProcessService>();
         builder.Services.AddScoped<IGestionaDocumentService, GestionaDocumentService>();
         builder.Services.Configure<GestionaOptions>(
             builder.Configuration.GetSection(GestionaOptions.SectionName));

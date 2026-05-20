@@ -19,4 +19,5 @@ public sealed record CreateDocumentInProcessResult(
     bool Success,
     CreateDocumentInProcessFailureKind FailureKind,
     string? ErrorMessage,
-    CreateDocumentInProcessDocument? Document);
+    CreateDocumentInProcessDocument? Document,
+    int? UpstreamStatusCode);

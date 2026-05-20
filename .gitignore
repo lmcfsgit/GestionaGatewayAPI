@@ -3,6 +3,7 @@ obj/
 artifacts/
 logs/
 Documents/
+#DocGenerator/
 .vs/
 .vscode/
 
