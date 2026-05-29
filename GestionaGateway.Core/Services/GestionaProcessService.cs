@@ -50,7 +50,10 @@ public sealed class GestionaProcessService : IGestionaProcessService
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "({Method}) started. ProcessId={ProcessId}, FolderId={FolderId}, ResolveFileIdFromProcessCode={ResolveFileIdFromProcessCode}, DocumentSourceType={DocumentSourceType}, FileName={FileName}, HasContent={HasContent}, HasExternalUrl={HasExternalUrl}",
+            "({Method}) started. ProcessId={ProcessId}, FolderId={FolderId}, " +
+            "ResolveFileIdFromProcessCode={ResolveFileIdFromProcessCode}, " +
+            "DocumentSourceType={DocumentSourceType}, FileName={FileName}, " +
+            "HasContent={HasContent}, HasExternalUrl={HasExternalUrl}",
             nameof(CreateDocumentInProcessAsync),
             processId,
             folderId,
@@ -78,8 +81,12 @@ public sealed class GestionaProcessService : IGestionaProcessService
         string? fileId = processId;
         if (resolveFileIdFromProcessCode)
         {
-            _logger.LogDebug("({Method}) resolving Gestiona file id for process {ProcessId}", nameof(CreateDocumentInProcessAsync), processId);
+            _logger.LogDebug("({Method}) resolving Gestiona file id for process {ProcessId}",
+                        nameof(CreateDocumentInProcessAsync), processId);
 
+            // When the process identifier is not a Gestiona file ID, attempt to resolve it using the dedicated API. 
+            // This supports scenarios where the process ID corresponds to a business-specific code - process_number - that must be 
+            // translated to a file ID for document operations.
             var fileIdResult = await _gestionaApiClient.GetFileIdFromProcessCode(
                 gestionaApiBaseUrl,
                 accessToken,
@@ -110,9 +117,9 @@ public sealed class GestionaProcessService : IGestionaProcessService
         var createDocumentRequest = new CreateDocumentInFileRequest
         {
             Name = documentName,
-            MetadataLanguage = "ES",
+            MetadataLanguage = "ES", // Is this important to set? Should it be configurable?
             Trashed = "false",
-            Version = "1"
+            Version = "1" // ?? Is this required for creation? Should it be configurable?
         };
 
         CreateDocumentAndFolderResponse? createdDocument;
@@ -128,7 +135,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
 
             createDocumentRequest = createDocumentRequest with
             {
-                Line = "1"
+                Line = "1" // ?? Is this required for folder creation? Should it be configurable or auto-generated?
             };
 
             _logger.LogDebug(
@@ -272,7 +279,9 @@ public sealed class GestionaProcessService : IGestionaProcessService
         }
 
         _logger.LogInformation(
-            "({Method}) succeeded. ProcessId={ProcessId}, FileId={FileId}, FolderId={FolderId}, DocumentId={DocumentId}, SourceType={DocumentSourceType}",
+            "({Method}) succeeded. ProcessId={ProcessId}, FileId={FileId}, " +
+            "FolderId={FolderId}, DocumentId={DocumentId}, " +
+            "SourceType={DocumentSourceType}",
             nameof(CreateDocumentInProcessAsync),
             processId,
             fileId,
@@ -298,12 +307,125 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    public async Task<GetProcessThirdsResult> GetProcessThirdsAsync(
+        string processId,
+        bool resolveFileIdFromProcessCode,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. ProcessId={ProcessId}, ResolveFileIdFromProcessCode={ResolveFileIdFromProcessCode}",
+            nameof(GetProcessThirdsAsync),
+            processId,
+            resolveFileIdFromProcessCode);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = _gestionaOptions.AccessToken;
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            _logger.LogWarning("({Method}) failed at step {Step} for process {ProcessId}", nameof(GetProcessThirdsAsync), "ValidateConfiguration:GestionaApiBaseUrl", processId);
+            return ThirdsFailure(GetProcessThirdsFailureKind.Configuration, "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            _logger.LogWarning("({Method}) failed at step {Step} for process {ProcessId}", nameof(GetProcessThirdsAsync), "ValidateConfiguration:AccessToken", processId);
+            return ThirdsFailure(GetProcessThirdsFailureKind.Configuration, "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            _logger.LogWarning("({Method}) failed at step {Step}", nameof(GetProcessThirdsAsync), "ValidateProcessId");
+            var inputName = resolveFileIdFromProcessCode ? "processNumber" : "processId";
+            return ThirdsFailure(GetProcessThirdsFailureKind.Validation, $"{inputName} is required.");
+        }
+
+        var fileId = processId;
+        if (resolveFileIdFromProcessCode)
+        {
+            _logger.LogDebug(
+                "({Method}) resolving Gestiona file id for process number {ProcessNumber}",
+                nameof(GetProcessThirdsAsync),
+                processId);
+
+            var fileIdResult = await _gestionaApiClient.GetFileIdFromProcessCode(
+                gestionaApiBaseUrl,
+                accessToken,
+                processId,
+                cancellationToken);
+
+            if (!fileIdResult.Success || string.IsNullOrWhiteSpace(fileIdResult.Value))
+            {
+                _logger.LogWarning("({Method}) failed at step {Step} for process number {ProcessNumber}", nameof(GetProcessThirdsAsync), "ResolveFileIdFromProcessCode", processId);
+                var failureKind = fileIdResult.StatusCode == 204
+                    ? GetProcessThirdsFailureKind.NotFound
+                    : GetProcessThirdsFailureKind.Upstream;
+                var errorMessage = fileIdResult.StatusCode == 204
+                    ? $"No Gestiona file was found for process number: {processId}."
+                    : "Failed to resolve Gestiona file ID.";
+                return ThirdsFailure(failureKind, errorMessage, GetUpstreamErrorStatusCode(fileIdResult.StatusCode));
+            }
+
+            fileId = fileIdResult.Value;
+            _logger.LogInformation("({Method}) resolved Gestiona file id {FileId} for process number {ProcessNumber}", nameof(GetProcessThirdsAsync), fileId, processId);
+        }
+
+        var thirdIdsResult = await _gestionaApiClient.GetProcessThirdIdsAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            fileId,
+            cancellationToken);
+
+        if (!thirdIdsResult.Success)
+        {
+            _logger.LogWarning("({Method}) failed at step {Step} for process {ProcessId}", nameof(GetProcessThirdsAsync), "GetProcessThirdPartiesFromGestiona", fileId);
+            var failureKind = thirdIdsResult.StatusCode == 404
+                ? GetProcessThirdsFailureKind.NotFound
+                : GetProcessThirdsFailureKind.Upstream;
+            return ThirdsFailure(
+                failureKind,
+                $"Failed to get third parties from Gestiona process: {fileId}.",
+                GetUpstreamErrorStatusCode(thirdIdsResult.StatusCode));
+        }
+
+        var thirdIds = string.Join(';', thirdIdsResult.Value ?? []);
+
+        _logger.LogInformation(
+            "({Method}) succeeded. ProcessId={ProcessId}, ThirdCount={ThirdCount}",
+            nameof(GetProcessThirdsAsync),
+            fileId,
+            thirdIdsResult.Value?.Count ?? 0);
+
+        return new GetProcessThirdsResult(
+            true,
+            GetProcessThirdsFailureKind.None,
+            null,
+            fileId,
+            thirdIds,
+            null);
+    }
+
     private static CreateDocumentInProcessResult Failure(
         CreateDocumentInProcessFailureKind failureKind,
         string errorMessage,
         int? upstreamStatusCode = null)
     {
         return new CreateDocumentInProcessResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    private static GetProcessThirdsResult ThirdsFailure(
+        GetProcessThirdsFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetProcessThirdsResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
+    }
+
+    private static int? GetUpstreamErrorStatusCode(int statusCode)
+    {
+        return statusCode >= 400
+            ? statusCode
+            : null;
     }
 
     /// <summary>
@@ -392,6 +514,9 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new UploadFileResult(null, safeFileName, content);
     }
 
+
+    // Helper method to extract the file name from the provided input and ensure it does not contain any path segments. 
+    // This is a basic check and should be complemented with additional validation as needed.
     private static string? GetSafeFileName(string? fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))
@@ -405,6 +530,8 @@ public sealed class GestionaProcessService : IGestionaProcessService
             : null;
     }
 
+
+    // Resolves the absolute upload URL for the given upload location, which may be either an absolute URL or a relative path.
     private static string ResolveUploadHref(string gestionaApiBaseUrl, string uploadLocation)
     {
         if (Uri.TryCreate(uploadLocation, UriKind.Absolute, out var absoluteUploadUri))

@@ -1,0 +1,152 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="processThirdsWorkflow" name="GET processes-processid-thirds">
+    <mxGraphModel dx="1539" dy="852" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Client&#xa;GET /processes/{process_id}/thirds&#xa;&#xa;Input scheme&#xa;route: process_id = string required&#xa;query: operationId = string | null&#xa;body: none" vertex="1">
+          <mxGeometry height="160" width="260" x="40" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="ASP.NET Core pipeline&#xa;&#xa;Input scheme&#xa;HttpContext&#xa;- route values&#xa;- query string&#xa;- cancellation token&#xa;&#xa;Important&#xa;ClientRequestLoggingMiddleware and Serilog request logging run before controller execution." vertex="1">
+          <mxGeometry height="190" width="300" x="370" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="ProcessesController.GetThirds(...)&#xa;&#xa;Input scheme&#xa;processId: string&#xa;operationId: string | null&#xa;cancellationToken: CancellationToken&#xa;&#xa;Validates&#xa;- process_id is not blank&#xa;- process_id is not {{process_id}}" vertex="1">
+          <mxGeometry height="200" width="310" x="740" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Validation failure&#xa;&#xa;Output scheme&#xa;GatewayResponse&#xa;{&#xa;  operationId,&#xa;  success: false,&#xa;  result: ProcessThirdsError&#xa;}&#xa;&#xa;HTTP 400" vertex="1">
+          <mxGeometry height="180" width="280" x="760" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="IGestionaProcessService.GetProcessThirdsAsync(...)&#xa;&#xa;Input scheme&#xa;processId: string&#xa;cancellationToken: CancellationToken" vertex="1">
+          <mxGeometry height="150" width="330" x="1170" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="GestionaProcessService.GetProcessThirdsAsync(...)&#xa;&#xa;Input scheme&#xa;processId: string&#xa;cancellationToken: CancellationToken&#xa;&#xa;Reads configuration&#xa;GestionaApiBaseUrl: string&#xa;AccessToken: string&#xa;&#xa;Validates&#xa;- base URL configured&#xa;- access token configured&#xa;- processId not blank" vertex="1">
+          <mxGeometry height="240" width="290" x="1600" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Configuration or service validation failure&#xa;&#xa;Output scheme&#xa;GetProcessThirdsResult&#xa;{&#xa;  success: false,&#xa;  failureKind: Configuration | Validation,&#xa;  errorMessage,&#xa;  processId: null,&#xa;  thirds: null,&#xa;  upstreamStatusCode: null&#xa;}" vertex="1">
+          <mxGeometry height="230" width="340" x="1540" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="IGestionaApiClient.GetProcessThirdIdsAsync(...)&#xa;&#xa;Input scheme&#xa;gestionaApiBaseUrl: string&#xa;accessToken: string&#xa;processId: string&#xa;cancellationToken: CancellationToken" vertex="1">
+          <mxGeometry height="180" width="280" x="2010" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="GestionaApiClient.GetProcessThirdIdsAsync(...)&#xa;&#xa;Input scheme&#xa;gestionaApiBaseUrl: string&#xa;accessToken: string&#xa;processId: string&#xa;cancellationToken: CancellationToken&#xa;&#xa;HTTP request&#xa;GET {baseUrl}/files/{processId}/thirdparties&#xa;Header: X-Gestiona-Access-Token" vertex="1">
+          <mxGeometry height="240" width="380" x="2360" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Gestiona API&lt;br&gt;GET /files/{process_id}/thirdparties&lt;br&gt;&lt;br&gt;Input scheme&lt;br&gt;path: process_id = Gestiona file id&lt;br&gt;header: X-Gestiona-Access-Token&lt;br&gt;&lt;br&gt;Success output scheme&lt;br&gt;&lt;blockquote style=&quot;margin: 0px 0px 0px 40px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; padding: 0px;&quot;&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;{&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; content: [&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: right;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; {&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: right;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; links: [&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;{&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; rel,&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;href,&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; title&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;]&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: right;&quot;&gt;},&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: right;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;....&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: right;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;]&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: justify;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;}&lt;/span&gt;&lt;/div&gt;&lt;/blockquote&gt;" vertex="1">
+          <mxGeometry height="320" width="360" x="2820" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Upstream failure&#xa;&#xa;Input scheme&#xa;HTTP status code &gt;= 400&#xa;response body: string | empty&#xa;&#xa;Client output&#xa;GestionaApiCallResult&lt;IReadOnlyList&lt;string&gt;&gt;&#xa;{&#xa;  statusCode,&#xa;  success: false,&#xa;  value: []&#xa;}" vertex="1">
+          <mxGeometry height="230" width="380" x="2360" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Deserialize ProcessThirdPartyLinksResponse&lt;br&gt;&lt;br&gt;Input scheme&lt;br&gt;responseBody: JSON string&lt;br&gt;&lt;br&gt;Model scheme&lt;br&gt;ProcessThirdPartyLinksResponse&lt;br&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; {&lt;/span&gt;&lt;/div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;content: ProcessThirdPartyLinkItem[] | null&lt;br&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: center;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: center;&quot;&gt;ProcessThirdPartyLinkItem&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: center;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; {&lt;/span&gt;&lt;/div&gt;  links: GestionaLink[] | null&lt;div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: center;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; GestionaLink&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; {&amp;nbsp;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;rel,&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;href,&amp;nbsp;&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;title&lt;/div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="310" width="370" x="2820" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="ExtractThirdIds(...)&#xa;&#xa;Input scheme&#xa;thirdPartyLinks: ProcessThirdPartyLinksResponse | null&#xa;&#xa;For each content item&#xa;1. Find first link where rel == &quot;third&quot;&#xa;2. Read href&#xa;3. Trim trailing slash&#xa;4. Take last path segment&#xa;&#xa;Output scheme&#xa;IReadOnlyList&lt;string&gt;&#xa;[ thirdId1, thirdId2, ... ]" vertex="1">
+          <mxGeometry height="300" width="390" x="3260" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="fl7L29ARqXqEg-vm8xwe-47" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="16">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="3945" y="890" />
+            </Array>
+            <mxPoint x="3990" y="960" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Return API client success&#xa;&#xa;Output scheme&#xa;GestionaApiCallResult&lt;IReadOnlyList&lt;string&gt;&gt;&#xa;{&#xa;  statusCode,&#xa;  success: true,&#xa;  value: [ thirdId1, thirdId2, ... ]&#xa;}&#xa;&#xa;Note&#xa;Empty upstream content returns success with []" vertex="1">
+          <mxGeometry height="220" width="350" x="3770" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Service maps API client result&#xa;&#xa;Input scheme&#xa;thirdIdsResult: GestionaApiCallResult&lt;IReadOnlyList&lt;string&gt;&gt;&#xa;&#xa;If success&#xa;thirds = string.Join(&#39;;&#39;, thirdIdsResult.Value ?? [])&#xa;&#xa;Output scheme&#xa;GetProcessThirdsResult&#xa;{&#xa;  success: true,&#xa;  failureKind: None,&#xa;  errorMessage: null,&#xa;  processId,&#xa;  thirds,&#xa;  upstreamStatusCode: null&#xa;}" vertex="1">
+          <mxGeometry height="300" width="390" x="1880" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Service maps upstream failure&#xa;&#xa;Input scheme&#xa;thirdIdsResult.StatusCode&#xa;&#xa;Failure kind mapping&#xa;404 -&gt; NotFound&#xa;other -&gt; Upstream&#xa;&#xa;Output scheme&#xa;GetProcessThirdsResult&#xa;{ success: false, failureKind, errorMessage, upstreamStatusCode }" vertex="1">
+          <mxGeometry height="230" width="330" x="1960" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Controller maps service success&#xa;&#xa;Input scheme&#xa;GetProcessThirdsResult success&#xa;&#xa;Output scheme&#xa;GatewayResponse&#xa;{&#xa;  operationId,&#xa;  success: true,&#xa;  result: {&#xa;    processId,&#xa;    thirds&#xa;  }&#xa;}&#xa;&#xa;HTTP 200 OK" vertex="1">
+          <mxGeometry height="250" width="330" x="1320" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Controller maps service failure&#xa;&#xa;Input scheme&#xa;GetProcessThirdsResult failure&#xa;&#xa;Status mapping&#xa;Configuration -&gt; 500&#xa;Validation -&gt; 400&#xa;NotFound -&gt; 404&#xa;Upstream -&gt; upstream status or 502&#xa;&#xa;Output scheme&#xa;GatewayResponse&#xa;{ operationId, success: false, result: ProcessThirdsError }" vertex="1">
+          <mxGeometry height="280" width="330" x="1050" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Final success response body&#xa;&#xa;{&#xa;  &quot;operationId&quot;: &quot;op-01&quot;,&#xa;  &quot;success&quot;: true,&#xa;  &quot;result&quot;: {&#xa;    &quot;processId&quot;: &quot;fdsfds&quot;,&#xa;    &quot;thirds&quot;: &quot;third1;third2&quot;&#xa;  }&#xa;}" vertex="1">
+          <mxGeometry height="250" width="310" x="740" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fff2cc;strokeColor=#d6b656;" value="Important notes&#xa;&#xa;- This endpoint treats process_id as a Gestiona file id. It does not resolve from process_number.&#xa;- The upstream thirdparty object id is not returned. The returned id comes from the rel=&quot;third&quot; href.&#xa;- Missing rel=&quot;third&quot; links are skipped.&#xa;- Empty content returns success with an empty thirds string.&#xa;- The response envelope is GatewayResponse." vertex="1">
+          <mxGeometry height="210" width="610" x="40" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="3" value="request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="4" value="route matched">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="24" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="5" value="invalid route input">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="25" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="6" value="valid route input">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1150" y="210" />
+              <mxPoint x="1150" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="26" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="7" value="DI call">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1500" y="210" />
+              <mxPoint x="1500" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="27" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="8" value="config or validation failure">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="28" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="9" value="valid service input">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1980" y="210" />
+              <mxPoint x="1980" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="29" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="10" value="DI call">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="30" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="11" value="HTTP GET">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="31" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="12" value="non-success status">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="32" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="13" value="success body">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="33" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="14" value="parsed model">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="34" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="15" value="third ids">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="36" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="17" value="client failure result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="37" edge="1" parent="1" source="16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="18" value="service success">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1570" y="880" />
+              <mxPoint x="1570" y="880" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="38" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="19" value="service failure">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="39" edge="1" parent="1" source="17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="19" value="service failure">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="40" edge="1" parent="1" source="18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="20" value="HTTP 200">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

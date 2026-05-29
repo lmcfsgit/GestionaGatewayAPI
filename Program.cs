@@ -1,5 +1,6 @@
 using GestionaGateway.Core.Configuration;
 using GestionaGateway.Core.Services;
+using GestionaGatewayAPI.Middleware;
 using Serilog;
 using System.Reflection;
 
@@ -39,6 +40,7 @@ public sealed class Program
         builder.Services.AddScoped<IGestionaApiClient, GestionaApiClient>();
         builder.Services.AddScoped<IGestionaProcessService, GestionaProcessService>();
         builder.Services.AddScoped<IGestionaDocumentService, GestionaDocumentService>();
+        builder.Services.AddScoped<IGestionaThirdService, GestionaThirdService>();
         builder.Services.Configure<GestionaOptions>(
             builder.Configuration.GetSection(GestionaOptions.SectionName));
 
@@ -52,7 +54,8 @@ public sealed class Program
                 dllCommit);
 
             var app = builder.Build();
-
+            //
+            app.UseMiddleware<ClientRequestLoggingMiddleware>();
             app.UseSerilogRequestLogging();
 
             // app.UseHttpsRedirection();

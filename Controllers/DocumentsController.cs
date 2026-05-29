@@ -116,7 +116,7 @@ public sealed class DocumentsController : ControllerBase
     {
         return StatusCode(
             statusCode,
-            new UploadDocumentResponse(
+            new GatewayResponse(
                 operationId,
                 false,
                 new UploadDocumentError(

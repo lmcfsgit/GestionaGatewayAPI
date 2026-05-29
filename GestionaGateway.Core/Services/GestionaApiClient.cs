@@ -10,6 +10,7 @@ namespace GestionaGateway.Core.Services;
 public sealed class GestionaApiClient : IGestionaApiClient
 {
     private const string FilesFilterContentType = "application/vnd.gestiona.filter.files";
+    private const string ThirdsFilterContentType = "application/vnd.gestiona.filter.thirds+json";
     private const string FileDocumentContentType = "application/vnd.gestiona.file-document+json; version=4";
     private const string FileFolderContentType = "application/vnd.gestiona.file-folder";
 
@@ -17,6 +18,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
     // it easier to update if the API routes change in the future
     private const string UploadsRoute = "uploads";
     private const string FilesRoute = "files";
+    private const string ThirdsRoute = "thirds";
     private const string DocumentsAndFoldersRoute = "documents-and-folders";
     private const string ContentSmallDocumentInstancesRoute = "content/small/documentinstances";
 
@@ -500,6 +502,271 @@ public sealed class GestionaApiClient : IGestionaApiClient
     }
 
     /// <summary>
+    /// Gets the third identifiers associated with a Gestiona file.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="processId">The Gestiona file identifier whose third parties should be retrieved.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the third identifiers extracted from the third-party links.</returns>
+    public async Task<GestionaApiCallResult<IReadOnlyList<string>>> GetProcessThirdIdsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/thirdparties";
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+
+        _logger.LogInformation(
+            "({Method}) getting Gestiona third parties for process {ProcessId} via {RequestUri}",
+            nameof(GetProcessThirdIdsAsync),
+            processId,
+            new Uri(httpClient.BaseAddress, request.RequestUri!));
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) process third parties response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetProcessThirdIdsAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed for process {ProcessId} with status code {StatusCode}, Body={Body}",
+                nameof(GetProcessThirdIdsAsync),
+                processId,
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<IReadOnlyList<string>>((int)response.StatusCode, false, []);
+        }
+
+        if (string.IsNullOrWhiteSpace(responseBody) ||
+            responseBody is "<empty>" or "<no content>")
+        {
+            return new GestionaApiCallResult<IReadOnlyList<string>>((int)response.StatusCode, true, []);
+        }
+
+        try
+        {
+            var thirdPartyLinks = JsonSerializer.Deserialize<ProcessThirdPartyLinksResponse>(responseBody);
+            var thirdIds = ExtractThirdIds(thirdPartyLinks);
+            return new GestionaApiCallResult<IReadOnlyList<string>>((int)response.StatusCode, true, thirdIds);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "({Method}) failed to parse Gestiona process third parties response body.", nameof(GetProcessThirdIdsAsync));
+            return new GestionaApiCallResult<IReadOnlyList<string>>((int)response.StatusCode, false, []);
+        }
+    }
+
+    /// <summary>
+    /// Gets a third from Gestiona.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="thirdId">The identifier of the third to retrieve.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the third when the request succeeds.</returns>
+    public async Task<GestionaApiCallResult<Third?>> GetThirdAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string thirdId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{ThirdsRoute}/{Uri.EscapeDataString(thirdId)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+
+        _logger.LogInformation(
+            "({Method}) getting Gestiona third {ThirdId} via {RequestUri}",
+            nameof(GetThirdAsync),
+            thirdId,
+            new Uri(httpClient.BaseAddress, request.RequestUri!));
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) third response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetThirdAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed for third {ThirdId} with status code {StatusCode}, Body={Body}",
+                nameof(GetThirdAsync),
+                thirdId,
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<Third?>((int)response.StatusCode, false, null);
+        }
+
+        if (string.IsNullOrWhiteSpace(responseBody) ||
+            responseBody is "<empty>" or "<no content>")
+        {
+            return new GestionaApiCallResult<Third?>((int)response.StatusCode, true, null);
+        }
+
+        try
+        {
+            var third = JsonSerializer.Deserialize<Third>(responseBody);
+            return new GestionaApiCallResult<Third?>((int)response.StatusCode, true, third);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "({Method}) failed to parse Gestiona third response body.", nameof(GetThirdAsync));
+            return new GestionaApiCallResult<Third?>((int)response.StatusCode, false, null);
+        }
+    }
+
+    /// <summary>
+    /// Resolves a Gestiona third identifier from a NIF.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="nif">The NIF used to filter thirds.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the resolved third identifier when found.</returns>
+    public async Task<GestionaApiCallResult<string?>> GetThirdIdByNifAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string nif,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, ThirdsRoute)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(new { nif }),
+                Encoding.UTF8)
+        };
+        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(ThirdsFilterContentType);
+
+        _logger.LogInformation(
+            "({Method}) resolving Gestiona third id by NIF via {RequestUri}",
+            nameof(GetThirdIdByNifAsync),
+            new Uri(httpClient.BaseAddress, request.RequestUri!));
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) third filter response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetThirdIdByNifAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed with status code {StatusCode}, Body={Body}",
+                nameof(GetThirdIdByNifAsync),
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<string?>((int)response.StatusCode, false, null);
+        }
+
+        if (string.IsNullOrWhiteSpace(responseBody) ||
+            responseBody is "<empty>" or "<no content>")
+        {
+            return new GestionaApiCallResult<string?>((int)response.StatusCode, true, null);
+        }
+
+        try
+        {
+            var thirdFilter = JsonSerializer.Deserialize<ThirdFilterResponse>(responseBody);
+            var thirdId = ResolveSingleThirdId(thirdFilter);
+            return new GestionaApiCallResult<string?>((int)response.StatusCode, true, thirdId);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "({Method}) failed to parse Gestiona third filter response body.", nameof(GetThirdIdByNifAsync));
+            return new GestionaApiCallResult<string?>((int)response.StatusCode, false, null);
+        }
+    }
+
+    /// <summary>
+    /// Gets the default address for a third from Gestiona.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="thirdId">The identifier of the third whose default address should be retrieved.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the third default address when the request succeeds.</returns>
+    public async Task<GestionaApiCallResult<ThirdDefaultAddress?>> GetThirdDefaultAddressAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string thirdId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{ThirdsRoute}/{Uri.EscapeDataString(thirdId)}/default-address";
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+
+        _logger.LogInformation(
+            "({Method}) getting Gestiona third default address {ThirdId} via {RequestUri}",
+            nameof(GetThirdDefaultAddressAsync),
+            thirdId,
+            new Uri(httpClient.BaseAddress, request.RequestUri!));
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) third default address response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetThirdDefaultAddressAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed for third {ThirdId} with status code {StatusCode}, Body={Body}",
+                nameof(GetThirdDefaultAddressAsync),
+                thirdId,
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<ThirdDefaultAddress?>((int)response.StatusCode, false, null);
+        }
+
+        if (string.IsNullOrWhiteSpace(responseBody) ||
+            responseBody is "<empty>" or "<no content>")
+        {
+            return new GestionaApiCallResult<ThirdDefaultAddress?>((int)response.StatusCode, true, null);
+        }
+
+        try
+        {
+            var address = JsonSerializer.Deserialize<ThirdDefaultAddress>(responseBody);
+            return new GestionaApiCallResult<ThirdDefaultAddress?>((int)response.StatusCode, true, address);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "({Method}) failed to parse Gestiona third default address response body.", nameof(GetThirdDefaultAddressAsync));
+            return new GestionaApiCallResult<ThirdDefaultAddress?>((int)response.StatusCode, false, null);
+        }
+    }
+
+    /// <summary>
     /// Creates an external URL document in the specified Gestiona file.
     /// </summary>
     /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
@@ -695,6 +962,54 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return string.IsNullOrWhiteSpace(folderId)
             ? route
             : $"{route}/{Uri.EscapeDataString(folderId)}";
+    }
+
+    private static IReadOnlyList<string> ExtractThirdIds(ProcessThirdPartyLinksResponse? thirdPartyLinks)
+    {
+        if (thirdPartyLinks?.Content is null)
+        {
+            return [];
+        }
+
+        var thirdIds = new List<string>();
+        foreach (var contentItem in thirdPartyLinks.Content)
+        {
+            var thirdLink = contentItem.Links?.FirstOrDefault(link =>
+                string.Equals(link.Rel, "third", StringComparison.Ordinal));
+            var thirdId = GetLastHrefSegment(thirdLink?.Href);
+
+            if (!string.IsNullOrWhiteSpace(thirdId))
+            {
+                thirdIds.Add(thirdId);
+            }
+        }
+
+        return thirdIds;
+    }
+
+    private static string? GetLastHrefSegment(string? href)
+    {
+        if (string.IsNullOrWhiteSpace(href))
+        {
+            return null;
+        }
+
+        var trimmedHref = href.TrimEnd('/');
+        var lastSlashIndex = trimmedHref.LastIndexOf('/');
+        return lastSlashIndex < 0
+            ? trimmedHref
+            : trimmedHref[(lastSlashIndex + 1)..];
+    }
+
+    private static string? ResolveSingleThirdId(ThirdFilterResponse? thirdFilter)
+    {
+        if (thirdFilter?.Content is null ||
+            thirdFilter.Content.Count != 1)
+        {
+            return null;
+        }
+
+        return thirdFilter.Content[0].Id;
     }
 
     /// <summary>
