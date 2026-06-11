@@ -60,6 +60,7 @@ public sealed class ThirdsController : ControllerBase
 
         var result = await _gestionaThirdService.GetThirdByNifAsync(
             nif,
+            GestionaRequestHeaders.GetAccessToken(Request),
             cancellationToken);
 
         return CreateThirdResponse(
@@ -106,6 +107,7 @@ public sealed class ThirdsController : ControllerBase
 
         var result = await _gestionaThirdService.GetThirdAsync(
             thirdId,
+            GestionaRequestHeaders.GetAccessToken(Request),
             cancellationToken);
 
         return CreateThirdResponse(

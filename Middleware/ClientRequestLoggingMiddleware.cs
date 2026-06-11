@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using System.Net;
 
 namespace GestionaGatewayAPI.Middleware;
 
@@ -30,7 +31,7 @@ public sealed class ClientRequestLoggingMiddleware
     /// <returns>A task that represents the asynchronous middleware operation.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
-        var clientAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var clientAddress = FormatClientAddress(context.Connection.RemoteIpAddress);
         var httpMethod = context.Request.Method;
         var requestPath = context.Request.Path.HasValue
             ? context.Request.Path.Value!
@@ -43,5 +44,25 @@ public sealed class ClientRequestLoggingMiddleware
             requestPath);
 
         await _next(context);
+    }
+
+    private static string FormatClientAddress(IPAddress? address)
+    {
+        if (address is null)
+        {
+            return "unknown";
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            return address.MapToIPv4().ToString();
+        }
+
+        if (address.Equals(IPAddress.IPv6Loopback))
+        {
+            return IPAddress.Loopback.ToString();
+        }
+
+        return address.ToString();
     }
 }

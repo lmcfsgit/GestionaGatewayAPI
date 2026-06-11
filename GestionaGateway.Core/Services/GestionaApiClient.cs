@@ -836,7 +836,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             responseBody);
         if (responseModel is not null)
         {
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "({Method}) documents-and-folders (url) response model:{NewLine}{ResponseModel}",
                 nameof(CreateDocumentUrlAsync),
                 Environment.NewLine,

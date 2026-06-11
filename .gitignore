@@ -1,5 +1,6 @@
 bin/
-obj/
+**/obj/
+**/obj_verify
 artifacts/
 logs/
 Documents/

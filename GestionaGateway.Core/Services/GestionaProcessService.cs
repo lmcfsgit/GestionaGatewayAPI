@@ -39,6 +39,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
     /// <param name="processId">The process identifier or Gestiona file identifier.</param>
     /// <param name="resolveFileIdFromProcessCode">Indicates whether the process identifier must first be resolved to a Gestiona file identifier.</param>
     /// <param name="documentsFolder">The base folder used to resolve file uploads from local storage.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>The result of the document creation workflow.</returns>
     public async Task<CreateDocumentInProcessResult> CreateDocumentInProcessAsync(
@@ -47,6 +48,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
         string? folderId,
         bool resolveFileIdFromProcessCode,
         string documentsFolder,
+        string? accessTokenOverride,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
@@ -64,7 +66,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
             !string.IsNullOrWhiteSpace(request.Url));
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = _gestionaOptions.AccessToken;
+        var accessToken = ResolveAccessToken(accessTokenOverride);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -310,6 +312,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
     public async Task<GetProcessThirdsResult> GetProcessThirdsAsync(
         string processId,
         bool resolveFileIdFromProcessCode,
+        string? accessTokenOverride,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
@@ -319,7 +322,8 @@ public sealed class GestionaProcessService : IGestionaProcessService
             resolveFileIdFromProcessCode);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = _gestionaOptions.AccessToken;
+        var accessToken = ResolveAccessToken(accessTokenOverride);
+
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -419,6 +423,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
         int? upstreamStatusCode = null)
     {
         return new GetProcessThirdsResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
+    }
+
+    private string? ResolveAccessToken(string? accessTokenOverride)
+    {
+        return string.IsNullOrWhiteSpace(accessTokenOverride)
+            ? _gestionaOptions.AccessToken
+            : accessTokenOverride;
     }
 
     private static int? GetUpstreamErrorStatusCode(int statusCode)

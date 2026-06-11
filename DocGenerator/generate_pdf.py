@@ -358,10 +358,6 @@ for line in lines:
         code_buffer.append(line)
         continue
 
-    if current_bullet_lines and line.startswith("  ") and stripped:
-        current_bullet_lines.append(stripped)
-        continue
-
     if stripped.startswith("# "):
         flush_bullet()
         story.append(Paragraph(with_anchor(stripped[2:]), title_style))
@@ -384,6 +380,9 @@ for line in lines:
     elif stripped.startswith("- "):
         flush_bullet()
         current_bullet_lines.append(stripped[2:])
+
+    elif current_bullet_lines and line.startswith("  ") and stripped:
+        current_bullet_lines.append(stripped)
 
     elif stripped == "":
         flush_bullet()

@@ -36,6 +36,8 @@ public sealed class Program
         var dllCommit = rawDllVersionParts.Length > 1 ? rawDllVersionParts[1] : "n/a";
 
         builder.Services.AddControllers();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
         builder.Services.AddHttpClient();
         builder.Services.AddScoped<IGestionaApiClient, GestionaApiClient>();
         builder.Services.AddScoped<IGestionaProcessService, GestionaProcessService>();
@@ -54,7 +56,13 @@ public sealed class Program
                 dllCommit);
 
             var app = builder.Build();
-            //
+
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
             app.UseMiddleware<ClientRequestLoggingMiddleware>();
             app.UseSerilogRequestLogging();
 

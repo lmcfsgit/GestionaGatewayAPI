@@ -18,14 +18,14 @@
 
 ### Endpoints
 
-- [1. POST `/processes/documents?process_number=<numero>`](#1-post-processesdocumentsprocess_numbernumero)
+- [1. POST `/processes/documents`](#1-post-processesdocuments)
 - [2. POST `/processes/{process_id}/documents`](#2-post-processesprocess_iddocuments)
-- [3. POST `/processes/documents/{folder_id}?process_number=<numero>`](#3-post-processesdocumentsfolder_idprocess_numbernumero)
+- [3. POST `/processes/documents/{folder_id}`](#3-post-processesdocumentsfolder_id)
 - [4. POST `/processes/{process_id}/documents/{folder_id}`](#4-post-processesprocess_iddocumentsfolder_id)
 - [5. GET `/documents/{document_id}`](#5-get-documentsdocument_id)
-- [6. GET `/thirds?nif=<nif>`](#6-get-thirdsnifnif)
+- [6. GET `/thirds`](#6-get-thirds)
 - [7. GET `/thirds/{third_id}`](#7-get-thirdsthird_id)
-- [8. GET `/processes/thirds?process_number=<numero>`](#8-get-processesthirdsprocess_numbernumero)
+- [8. GET `/processes/thirds`](#8-get-processesthirds)
 - [9. GET `/processes/{process_id}/thirds`](#9-get-processesprocess_idthirds)
 
 ## Models
@@ -768,7 +768,7 @@ Gets a third from Gestiona and enriches it with the default address.
 - If `third_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{third_id}}`, the endpoint returns HTTP `400`
 
-### 8. GET `/processes/thirds?process_number=<numero>`
+### 8. GET `/processes/thirds`
 
 Gets the third identifiers associated with a Gestiona process file resolved from `process_number`.
 

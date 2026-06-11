@@ -62,6 +62,7 @@ public sealed class DocumentsController : ControllerBase
 
         var result = await _gestionaDocumentService.DownloadDocumentAsync(
             documentId,
+            GestionaRequestHeaders.GetAccessToken(Request),
             cancellationToken);
 
         if (!result.Success)

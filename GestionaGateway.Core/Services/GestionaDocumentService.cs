@@ -34,10 +34,12 @@ public sealed class GestionaDocumentService : IGestionaDocumentService
     /// Downloads a document from Gestiona.
     /// </summary>
     /// <param name="documentId">The identifier of the document to download.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>The result of the document download workflow.</returns>
     public async Task<DownloadDocumentResult> DownloadDocumentAsync(
         string documentId,
+        string? accessTokenOverride,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
@@ -46,7 +48,7 @@ public sealed class GestionaDocumentService : IGestionaDocumentService
             documentId);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = _gestionaOptions.AccessToken;
+        var accessToken = ResolveAccessToken(accessTokenOverride);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -122,5 +124,12 @@ public sealed class GestionaDocumentService : IGestionaDocumentService
         int? upstreamStatusCode = null)
     {
         return new DownloadDocumentResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    private string? ResolveAccessToken(string? accessTokenOverride)
+    {
+        return string.IsNullOrWhiteSpace(accessTokenOverride)
+            ? _gestionaOptions.AccessToken
+            : accessTokenOverride;
     }
 }

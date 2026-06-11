@@ -55,7 +55,10 @@ public sealed class GestionaThirdServiceTests
         };
         var service = CreateService(apiClient);
 
-        var result = await service.GetThirdByNifAsync("196510880", CancellationToken.None);
+        var result = await service.GetThirdByNifAsync(
+            "196510880",
+            accessTokenOverride: null,
+            cancellationToken: CancellationToken.None);
 
         Assert.True(result.Success);
         Assert.Equal("196510880", resolvedNif);
@@ -79,13 +82,64 @@ public sealed class GestionaThirdServiceTests
         };
         var service = CreateService(apiClient);
 
-        var result = await service.GetThirdByNifAsync("196510880", CancellationToken.None);
+        var result = await service.GetThirdByNifAsync(
+            "196510880",
+            accessTokenOverride: null,
+            cancellationToken: CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.True(
             result.FailureKind == GetThirdFailureKind.NotFound,
             $"Expected FailureKind to be {GetThirdFailureKind.NotFound} when no single third is resolved by NIF, but got {result.FailureKind}.");
         Assert.Contains("No single Gestiona third", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetThirdByNifAsync_WhenAccessTokenOverrideIsProvided_UsesOverrideToken()
+    {
+        var receivedTokens = new List<string>();
+        var apiClient = new TestGestionaApiClient
+        {
+            GetThirdIdByNifAsyncHandler = (baseUrl, token, nif, cancellationToken) =>
+            {
+                receivedTokens.Add(token);
+                return Task.FromResult(new GestionaApiCallResult<string?>(200, true, "third-123"));
+            },
+            GetThirdAsyncHandler = (baseUrl, token, thirdId, cancellationToken) =>
+            {
+                receivedTokens.Add(token);
+                return Task.FromResult(new GestionaApiCallResult<Third?>(200, true, new Third(
+                    "Luis Silva Fernandes",
+                    "ESP",
+                    thirdId,
+                    "196510880",
+                    "PHISIC",
+                    "luis@example.com",
+                    "913347827",
+                    "OWN",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null)));
+            },
+            GetThirdDefaultAddressAsyncHandler = (baseUrl, token, thirdId, cancellationToken) =>
+            {
+                receivedTokens.Add(token);
+                return Task.FromResult(new GestionaApiCallResult<ThirdDefaultAddress?>(200, true, null));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetThirdByNifAsync(
+            "196510880",
+            accessTokenOverride: "request-token",
+            cancellationToken: CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(new[] { "request-token", "request-token", "request-token" }, receivedTokens);
     }
 
     private static GestionaThirdService CreateService(TestGestionaApiClient apiClient)

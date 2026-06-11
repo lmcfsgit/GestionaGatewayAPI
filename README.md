@@ -16,3 +16,16 @@
 ### Improvements
 
 - The log of the request body doesn't print the Content anymore, it only informs that it's present.
+
+<center>_Version 1.2.1_</center>
+
+### Features
+
+- Support for X-User-Access-Token header.
+  If it's present uses this token for the X-Gestiona-Access-Token else use the environment variable Gestiona\_\_AccessToken
+
+### Bug Fixs
+
+### Improvements
+
+- Added swagger support to the API: .../swagger

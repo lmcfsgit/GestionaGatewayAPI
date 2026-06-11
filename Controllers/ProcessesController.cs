@@ -128,6 +128,7 @@ public sealed class ProcessesController : ControllerBase
         var result = await _gestionaProcessService.GetProcessThirdsAsync(
             processId,
             resolveFileIdFromProcessCode,
+            GestionaRequestHeaders.GetAccessToken(Request),
             cancellationToken);
 
         if (!result.Success)
@@ -394,12 +395,19 @@ public sealed class ProcessesController : ControllerBase
         CancellationToken cancellationToken)
     {
         var documentsFolder = _configuration["DocumentStorage:BasePath"];
+        var gestionaAccessToken = GestionaRequestHeaders.GetAccessToken(Request);
+        _logger.LogDebug(
+            "({Method}) resolved request Gestiona access token {GestionaAccessToken}",
+            nameof(UploadDocumentCore),
+            MaskAccessToken(gestionaAccessToken));
+
         var result = await _gestionaProcessService.CreateDocumentInProcessAsync(
             request,
             processId,
             folderId,
             resolveFileIdFromProcessCode,
             documentsFolder ?? string.Empty,
+            gestionaAccessToken,
             cancellationToken);
 
         if (!result.Success)
@@ -536,6 +544,18 @@ public sealed class ProcessesController : ControllerBase
         }
 
         return routeDescription;
+    }
+
+    private static string MaskAccessToken(string? accessToken)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return "<none>";
+        }
+
+        return accessToken.Length <= 8
+            ? "********"
+            : $"{accessToken[..4]}...{accessToken[^4..]}";
     }
 
 }

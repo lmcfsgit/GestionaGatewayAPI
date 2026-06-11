@@ -34,10 +34,12 @@ public sealed class GestionaThirdService : IGestionaThirdService
     /// Gets a third from Gestiona and enriches it with its default address.
     /// </summary>
     /// <param name="thirdId">The Gestiona third identifier to retrieve.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>The third lookup result, including failure details or the enriched third data.</returns>
     public async Task<GetThirdResult> GetThirdAsync(
         string thirdId,
+        string? accessTokenOverride,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
@@ -46,7 +48,7 @@ public sealed class GestionaThirdService : IGestionaThirdService
             thirdId);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = _gestionaOptions.AccessToken;
+        var accessToken = ResolveAccessToken(accessTokenOverride);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -130,10 +132,12 @@ public sealed class GestionaThirdService : IGestionaThirdService
     /// Gets a third from Gestiona by NIF and enriches it with its default address.
     /// </summary>
     /// <param name="nif">The NIF used to resolve the Gestiona third identifier.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>The third lookup result, including failure details or the enriched third data.</returns>
     public async Task<GetThirdResult> GetThirdByNifAsync(
         string nif,
+        string? accessTokenOverride,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
@@ -142,7 +146,7 @@ public sealed class GestionaThirdService : IGestionaThirdService
             nif);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = _gestionaOptions.AccessToken;
+        var accessToken = ResolveAccessToken(accessTokenOverride);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -190,6 +194,7 @@ public sealed class GestionaThirdService : IGestionaThirdService
 
         return await GetThirdAsync(
             thirdIdResult.Value,
+            accessTokenOverride,
             cancellationToken);
     }
 
@@ -226,5 +231,12 @@ public sealed class GestionaThirdService : IGestionaThirdService
         return statusCode >= 400
             ? statusCode
             : null;
+    }
+
+    private string? ResolveAccessToken(string? accessTokenOverride)
+    {
+        return string.IsNullOrWhiteSpace(accessTokenOverride)
+            ? _gestionaOptions.AccessToken
+            : accessTokenOverride;
     }
 }
