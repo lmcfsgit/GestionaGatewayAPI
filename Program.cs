@@ -23,13 +23,22 @@ public sealed class Program
 
         builder.Host.UseSerilog();
 
-        var apiVersion = builder.Configuration["Api:Version"] ?? "unknown";
+        var apiAssembly = typeof(Program).Assembly;
         var coreAssembly = typeof(IGestionaDocumentService).Assembly;
 
+        var rawApiVersion =
+            apiAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? apiAssembly.GetName().Version?.ToString()
+            ?? "unknown";
         var rawDllVersion =
             coreAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             ?? coreAssembly.GetName().Version?.ToString()
             ?? "unknown";
+
+        var rawApiVersionParts = rawApiVersion.Split('+', 2);
+        var apiVersion = rawApiVersionParts[0];
+        var apiCommit = rawApiVersionParts.Length > 1 ? rawApiVersionParts[1] : "n/a";
+
 
         var rawDllVersionParts = rawDllVersion.Split('+', 2);
         var dllVersion = rawDllVersionParts[0];
@@ -49,9 +58,10 @@ public sealed class Program
         try
         {
             Log.Information(
-                "{Method} starting application. ApiVersion={ApiVersion}, DllVersion={DllVersion}, DllCommit={DllCommit}",
+                "{Method} starting GestionaGatewayAPI. ApiVersion={ApiVersion}, ApiCommit={ApiCommit}, DllVersion={DllVersion}, DllCommit={DllCommit}",
                 nameof(Main),
                 apiVersion,
+                apiCommit,
                 dllVersion,
                 dllCommit);
 

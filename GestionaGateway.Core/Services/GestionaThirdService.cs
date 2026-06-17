@@ -214,8 +214,32 @@ public sealed class GestionaThirdService : IGestionaThirdService
             ZipCode = address.ZipCode,
             Province = address.Province,
             Country = address.Country,
-            TypeOfRoad = address.TypeOfRoad
+            TypeOfRoad = address.TypeOfRoad,
+            Zone = address.Zone,
+            ParishCode = GetParishCode(address)
         };
+    }
+
+    private static string? GetParishCode(ThirdDefaultAddress address)
+    {
+        var parishLink = address.Links?.FirstOrDefault(link =>
+            string.Equals(link.Rel, "parish", StringComparison.Ordinal));
+
+        return GetLastHrefSegment(parishLink?.Href);
+    }
+
+    private static string? GetLastHrefSegment(string? href)
+    {
+        if (string.IsNullOrWhiteSpace(href))
+        {
+            return null;
+        }
+
+        var trimmedHref = href.TrimEnd('/');
+        var lastSlashIndex = trimmedHref.LastIndexOf('/');
+        return lastSlashIndex < 0
+            ? trimmedHref
+            : trimmedHref[(lastSlashIndex + 1)..];
     }
 
     private static GetThirdResult Failure(

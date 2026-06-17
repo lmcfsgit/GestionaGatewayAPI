@@ -68,7 +68,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, request.RequestUri!));
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        LogDeprecatedFileDocumentVersionHeader(response, nameof(CreateUploadSpaceAsync));
+        LogDeprecatedHeader(response, nameof(CreateUploadSpaceAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
         _logger.LogDebug(
             "({Method}) upload space response: StatusCode={StatusCode}, Body={Body}",
@@ -130,6 +130,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             uploadUri);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(UploadDocumentContentAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
         _logger.LogDebug(
             "({Method}) document upload response: StatusCode={StatusCode}, Body={Body}",
@@ -168,10 +169,17 @@ public sealed class GestionaApiClient : IGestionaApiClient
         httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
         httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
 
+        var serializedPayload = JsonSerializer.Serialize(new { exact_code = processId });
+        _logger.LogDebug(
+            "({Method}) Gestiona request body:{NewLine}{RequestBody}",
+            nameof(GetFileSelfHrefAsync),
+            Environment.NewLine,
+            FormatJsonForLog(serializedPayload));
+
         using var request = new HttpRequestMessage(HttpMethod.Get, FilesRoute)
         {
             Content = new StringContent(
-                JsonSerializer.Serialize(new { exact_code = processId }),
+                serializedPayload,
                 Encoding.UTF8,
                 FilesFilterContentType)
         };
@@ -182,6 +190,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, request.RequestUri!));
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetFileSelfHrefAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
         _logger.LogDebug(
             "({Method}) files response: StatusCode={StatusCode}, Body={Body}",
@@ -260,10 +269,17 @@ public sealed class GestionaApiClient : IGestionaApiClient
         httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
         httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
 
+        var serializedPayload = JsonSerializer.Serialize(new { exact_code = processId });
+        _logger.LogDebug(
+            "({Method}) Gestiona request body:{NewLine}{RequestBody}",
+            nameof(GetFileIdFromProcessCode),
+            Environment.NewLine,
+            FormatJsonForLog(serializedPayload));
+
         using var request = new HttpRequestMessage(HttpMethod.Get, FilesRoute)
         {
             Content = new StringContent(
-                JsonSerializer.Serialize(new { exact_code = processId }),
+                serializedPayload,
                 Encoding.UTF8,
                 FilesFilterContentType)
         };
@@ -274,6 +290,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, request.RequestUri!));
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetFileIdFromProcessCode));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
         _logger.LogDebug(
             "({Method}) files response for file id extraction: StatusCode={StatusCode}, Body={Body}",
@@ -360,8 +377,8 @@ public sealed class GestionaApiClient : IGestionaApiClient
             name = request.Name,
             type = request.Type,
             metadata_language = request.MetadataLanguage,
-            trashed = request.Trashed,
-            version = request.Version,
+            // trashed = request.Trashed,
+            // version = request.Version,
             links = new[]
             {
                 new
@@ -378,6 +395,11 @@ public sealed class GestionaApiClient : IGestionaApiClient
             nameof(CreateDocumentAndFolderAsync),
             route,
             serializedPayload);
+        _logger.LogDebug(
+            "({Method}) Gestiona request body:{NewLine}{RequestBody}",
+            nameof(CreateDocumentAndFolderAsync),
+            Environment.NewLine,
+            FormatJsonForLog(serializedPayload));
 
         var requestContent = new StringContent(serializedPayload, Encoding.UTF8);
         requestContent.Headers.ContentType = MediaTypeHeaderValue.Parse(FileDocumentContentType);
@@ -398,7 +420,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
         // (e.g. when the file ID is not found), so we read and log the body regardless of the status code
         using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
 
-        LogDeprecatedFileDocumentVersionHeader(response, nameof(CreateDocumentAndFolderAsync));
+        LogDeprecatedHeader(response, nameof(CreateDocumentAndFolderAsync));
 
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
         _logger.LogDebug(
@@ -464,6 +486,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, request.RequestUri!));
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(DownloadDocumentAsync));
 
         if (!response.IsSuccessStatusCode)
         {
@@ -529,6 +552,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, request.RequestUri!));
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetProcessThirdIdsAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
 
         _logger.LogDebug(
@@ -595,6 +619,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, request.RequestUri!));
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetThirdAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
 
         _logger.LogDebug(
@@ -650,10 +675,17 @@ public sealed class GestionaApiClient : IGestionaApiClient
         httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
         httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
 
+        var serializedPayload = JsonSerializer.Serialize(new { nif });
+        _logger.LogDebug(
+            "({Method}) Gestiona request body:{NewLine}{RequestBody}",
+            nameof(GetThirdIdByNifAsync),
+            Environment.NewLine,
+            FormatJsonForLog(serializedPayload));
+
         using var request = new HttpRequestMessage(HttpMethod.Get, ThirdsRoute)
         {
             Content = new StringContent(
-                JsonSerializer.Serialize(new { nif }),
+                serializedPayload,
                 Encoding.UTF8)
         };
         request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(ThirdsFilterContentType);
@@ -664,6 +696,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, request.RequestUri!));
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetThirdIdByNifAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
 
         _logger.LogDebug(
@@ -729,6 +762,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, request.RequestUri!));
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetThirdDefaultAddressAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
 
         _logger.LogDebug(
@@ -793,8 +827,8 @@ public sealed class GestionaApiClient : IGestionaApiClient
             name = request.Name,
             type = request.Type,
             metadata_language = request.MetadataLanguage,
-            trashed = request.Trashed,
-            version = request.Version,
+            // trashed = request.Trashed,
+            // version = request.Version,
             external_url = request.ExternalUrl
 
         };
@@ -805,6 +839,11 @@ public sealed class GestionaApiClient : IGestionaApiClient
             nameof(CreateDocumentUrlAsync),
             route,
             serializedPayload);
+        _logger.LogDebug(
+            "({Method}) Gestiona request body:{NewLine}{RequestBody}",
+            nameof(CreateDocumentUrlAsync),
+            Environment.NewLine,
+            FormatJsonForLog(serializedPayload));
 
         var requestContent = new StringContent(serializedPayload, Encoding.UTF8);
         requestContent.Headers.ContentType = MediaTypeHeaderValue.Parse(FileDocumentContentType);
@@ -821,7 +860,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, httpRequest.RequestUri!));
 
         using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
-        LogDeprecatedFileDocumentVersionHeader(response, nameof(CreateDocumentUrlAsync));
+        LogDeprecatedHeader(response, nameof(CreateDocumentUrlAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
         CreateDocumentAndFolderResponse? responseModel = null;
         if (!string.IsNullOrWhiteSpace(responseBody))
@@ -891,6 +930,11 @@ public sealed class GestionaApiClient : IGestionaApiClient
             nameof(CreateFolderAsync),
             route,
             serializedPayload);
+        _logger.LogDebug(
+            "({Method}) Gestiona request body:{NewLine}{RequestBody}",
+            nameof(CreateFolderAsync),
+            Environment.NewLine,
+            FormatJsonForLog(serializedPayload));
 
         var requestContent = new StringContent(serializedPayload, Encoding.UTF8);
         requestContent.Headers.ContentType = MediaTypeHeaderValue.Parse(FileFolderContentType);
@@ -907,6 +951,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             new Uri(httpClient.BaseAddress, httpRequest.RequestUri!));
 
         using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
+        LogDeprecatedHeader(response, nameof(CreateFolderAsync));
         var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
 
         CreateDocumentAndFolderResponse? responseModel = null;
@@ -1056,11 +1101,11 @@ public sealed class GestionaApiClient : IGestionaApiClient
     }
 
     /// <summary>
-    /// Logs the Gestiona deprecation header emitted for the file-document media type when present.
+    /// Logs the Gestiona deprecation header when present.
     /// </summary>
     /// <param name="response">The HTTP response that may contain the deprecation header.</param>
     /// <param name="methodName">The calling method name used in the log entry.</param>
-    private void LogDeprecatedFileDocumentVersionHeader(HttpResponseMessage response, string methodName)
+    private void LogDeprecatedHeader(HttpResponseMessage response, string methodName)
     {
         if (!response.Headers.TryGetValues("X-Gestiona-Deprecated", out var values))
         {
@@ -1069,9 +1114,8 @@ public sealed class GestionaApiClient : IGestionaApiClient
 
         var deprecatedValue = string.Join(", ", values);
         _logger.LogInformation(
-            "({Method}) received X-Gestiona-Deprecated for content type {ContentType}: {DeprecatedValue}",
+            "({Method}) received X-Gestiona-Deprecated: {DeprecatedValue}",
             methodName,
-            FileDocumentContentType,
             deprecatedValue);
     }
 

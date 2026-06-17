@@ -46,12 +46,13 @@ The token value is resolved by the gateway service layer:
 
 ### 1. GET `/files`
 
-Resolves a Gestiona file from a process number/code.
+Resolves a Gestiona file id from a process number/code.
 
 #### Used by
 
 - `POST /processes/documents?process_number=<numero>`
 - `POST /processes/documents/{folder_id}?process_number=<numero>`
+- `GET /processes?process_number=<numero>`
 - `GET /processes/thirds?process_number=<numero>`
 
 #### Request headers
@@ -82,6 +83,7 @@ Resolves a Gestiona file from a process number/code.
 
 #### Notes
 
+- `GET /processes?process_number=<numero>` returns this value directly in the gateway `result.Id` field.
 - A `204 No Content` response is treated as not found by the current process-code resolution flow.
 - Other unsuccessful status codes are propagated as upstream failures by gateway services.
 
@@ -172,8 +174,6 @@ Creates a document or folder directly under a Gestiona file.
   "name": "string",
   "type": "DIGITAL",
   "metadata_language": "ES",
-  "trashed": "false",
-  "version": "1",
   "links": [
     {
       "rel": "content",
@@ -190,8 +190,6 @@ Creates a document or folder directly under a Gestiona file.
   "name": "string",
   "type": "EXTERNAL_URL",
   "metadata_language": "ES",
-  "trashed": "false",
-  "version": "1",
   "external_url": "string"
 }
 ```
@@ -414,3 +412,5 @@ Gets the default address for a Gestiona third.
   - `province`
   - `country`
   - `type_of_road`
+  - `zone`
+- The gateway also reads the address `links` entry where `rel` is `parish` and maps the last `href` segment to third result field `parish_code`.

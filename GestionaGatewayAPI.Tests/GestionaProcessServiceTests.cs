@@ -11,6 +11,53 @@ namespace GestionaGatewayAPI.Tests;
 public sealed class GestionaProcessServiceTests
 {
     [Fact]
+    public async Task GetProcessAsync_ResolvesFileIdFromProcessNumber()
+    {
+        var resolvedProcessCode = string.Empty;
+        var apiClient = new TestGestionaApiClient
+        {
+            GetFileIdFromProcessCodeHandler = (baseUrl, token, processCode, cancellationToken) =>
+            {
+                resolvedProcessCode = processCode;
+                return Task.FromResult(new GestionaApiCallResult<string?>(200, true, "file-123"));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessAsync(
+            "PROC-2026-001",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("PROC-2026-001", resolvedProcessCode);
+        Assert.Equal("file-123", result.ProcessId);
+        Assert.Equal("PROC-2026-001", result.ProcessNumber);
+    }
+
+    [Fact]
+    public async Task GetProcessAsync_WhenFileResolutionReturnsNoContent_ReturnsNotFound()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetFileIdFromProcessCodeHandler = (baseUrl, token, processCode, cancellationToken) =>
+            {
+                return Task.FromResult(new GestionaApiCallResult<string?>(204, false, null));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessAsync(
+            "PROC-2026-404",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(GetProcessFailureKind.NotFound, result.FailureKind);
+        Assert.Contains("No Gestiona file", result.ErrorMessage);
+    }
+
+    [Fact]
     public async Task GetProcessThirdsAsync_WhenResolvingFromProcessCode_UsesResolvedFileId()
     {
         var resolvedProcessCode = string.Empty;

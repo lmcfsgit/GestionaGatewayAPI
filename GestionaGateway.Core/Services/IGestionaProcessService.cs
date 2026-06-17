@@ -28,6 +28,18 @@ public interface IGestionaProcessService
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Resolves the Gestiona file identifier associated with a process number.
+    /// </summary>
+    /// <param name="processNumber">The process number used to search for the Gestiona file.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The process lookup result, including the resolved Gestiona file identifier on success.</returns>
+    Task<GetProcessResult> GetProcessAsync(
+        string processNumber,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Gets the third identifiers associated with a Gestiona process file.
     /// </summary>
     /// <param name="processId">The process identifier or Gestiona file identifier used to locate the third parties.</param>

@@ -1,6 +1,6 @@
 # Gestiona Gateway API Documentation
 
-<center>Versão 1.1.1</center>
+<center>Versão 1.3.1</center>
 
 ## Index
 
@@ -12,9 +12,15 @@
 - [UploadDocumentError](#uploaddocumenterror)
 - [ThirdResult](#thirdresult)
 - [ThirdError](#thirderror)
+- [ProcessResult](#processresult)
+- [ProcessError](#processerror)
 - [ProcessThirdsResult](#processthirdsresult)
 - [ProcessThirdsError](#processthirdserror)
 - [Download Success Output](#download-success-output)
+
+### Shared
+
+- [Request headers](#request-headers)
 
 ### Endpoints
 
@@ -25,8 +31,9 @@
 - [5. GET `/documents/{document_id}`](#5-get-documentsdocument_id)
 - [6. GET `/thirds?nif=<nif>`](#6-get-thirdsnifnif)
 - [7. GET `/thirds/{third_id}`](#7-get-thirdsthird_id)
-- [8. GET `/processes/thirds?process_number=<numero>`](#8-get-processesthirdsprocess_numbernumero)
-- [9. GET `/processes/{process_id}/thirds`](#9-get-processesprocess_idthirds)
+- [8. GET `/processes?process_number=<numero>`](#8-get-processesprocess_numbernumero)
+- [9. GET `/processes/thirds?process_number=<numero>`](#9-get-processesthirdsprocess_numbernumero)
+- [10. GET `/processes/{process_id}/thirds`](#10-get-processesprocess_idthirds)
 
 ## Models
 
@@ -121,6 +128,8 @@ Used inside `GatewayResponse.result` on third lookup success.
 ```json
 {
   "full_name": "string | null",
+  "first_name": "string | null",
+  "second_surname": "string | null",
   "nif_country": "string | null",
   "id": "string | null",
   "nif": "string | null",
@@ -133,7 +142,9 @@ Used inside `GatewayResponse.result` on third lookup success.
   "zip_code": "string | null",
   "province": "string | null",
   "country": "string | null",
-  "type_of_road": "string | null"
+  "type_of_road": "string | null",
+  "zone": "string | null",
+  "parish_code": "string | null"
 }
 ```
 
@@ -155,6 +166,44 @@ Used inside `GatewayResponse.result` on third lookup errors.
 ```
 
 #### Possible `kind` values for third lookup
+
+- `Configuration`
+- `Validation`
+- `NotFound`
+- `Upstream`
+
+### ProcessResult
+
+Used inside `GatewayResponse.result` on process lookup success.
+
+```json
+{
+  "Id": "string",
+  "processNumber": "string"
+}
+```
+
+#### Field notes
+
+- `Id`
+  The resolved Gestiona file id.
+- `processNumber`
+  The process number used to resolve the file id.
+
+### ProcessError
+
+Used inside `GatewayResponse.result` on process lookup errors.
+
+```json
+{
+  "code": 400,
+  "name": "Bad Request",
+  "kind": "Validation",
+  "message": "string"
+}
+```
+
+#### Possible `kind` values for process lookup
 
 - `Configuration`
 - `Validation`
@@ -223,6 +272,15 @@ The download endpoint does not return JSON on success. It returns the raw docume
   "content": "byte[]"
 }
 ```
+
+## Request headers
+
+All endpoints can optionally receive:
+
+- `X-User-Access-Token`
+  When present and not blank, the gateway uses this value as the upstream Gestiona `X-Gestiona-Access-Token`.
+
+If `X-User-Access-Token` is absent or blank, the gateway uses the configured token from `Gestiona:AccessToken`.
 
 ## Endpoints
 
@@ -675,6 +733,8 @@ Gets a third from Gestiona by resolving the third id from a NIF, then enriches i
   "success": true,
   "result": {
     "full_name": "Luis Silva Fernandes",
+    "first_name": "Luis",
+    "second_surname": "Fernandes",
     "nif_country": "ESP",
     "id": "4b18954c-b66c-4e55-af6d-acf6a2c7aaa3",
     "nif": "196510880",
@@ -687,7 +747,9 @@ Gets a third from Gestiona by resolving the third id from a NIF, then enriches i
     "zip_code": "4440368",
     "province": "PORTO",
     "country": "Portugal",
-    "type_of_road": "CL"
+    "type_of_road": "CL",
+    "zone": "string | null",
+    "parish_code": "string | null"
   }
 }
 ```
@@ -740,6 +802,8 @@ Gets a third from Gestiona and enriches it with the default address.
   "success": true,
   "result": {
     "full_name": "Leonor Ranito Silva",
+    "first_name": "Leonor",
+    "second_surname": "Silva",
     "nif_country": "PT",
     "id": "3aeff9c7-a865-4f1a-9cd6-47993b423873",
     "nif": "211211211",
@@ -752,7 +816,9 @@ Gets a third from Gestiona and enriches it with the default address.
     "zip_code": "4440368",
     "province": "PORTO",
     "country": "Portugal",
-    "type_of_road": "CL"
+    "type_of_road": "CL",
+    "zone": "string | null",
+    "parish_code": "string | null"
   }
 }
 ```
@@ -768,7 +834,60 @@ Gets a third from Gestiona and enriches it with the default address.
 - If `third_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{third_id}}`, the endpoint returns HTTP `400`
 
-### 8. GET `/processes/thirds?process_number=<numero>`
+### 8. GET `/processes?process_number=<numero>`
+
+Resolves the Gestiona file id associated with `process_number`.
+
+#### Route parameters
+
+- none
+
+#### Query parameters
+
+- `process_number` required
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /files` with filter `exact_code = process_number`
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessResult`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "Id": "30bcb012-47e2-4e7e-92e0-a0f7278b52b8",
+    "processNumber": "PROC-2026-001"
+  }
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessError`
+
+#### Notes
+
+- `Id` is the resolved Gestiona file id, not the original `process_number`
+- If no Gestiona file is found for `process_number`, the endpoint returns HTTP `404`
+- If `process_number` is empty or whitespace, the endpoint returns HTTP `400`
+- If Postman sends an unresolved variable such as `{{process_number}}`, the endpoint returns HTTP `400`
+
+### 9. GET `/processes/thirds?process_number=<numero>`
 
 Gets the third identifiers associated with a Gestiona process file resolved from `process_number`.
 
@@ -822,7 +941,7 @@ Gets the third identifiers associated with a Gestiona process file resolved from
 - If `process_number` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{process_number}}`, the endpoint returns HTTP `400`
 
-### 9. GET `/processes/{process_id}/thirds`
+### 10. GET `/processes/{process_id}/thirds`
 
 Gets the third identifiers associated with a Gestiona process file.
 

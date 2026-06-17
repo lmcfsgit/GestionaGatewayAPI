@@ -6,6 +6,8 @@ namespace GestionaGateway.Core.Models;
 /// Represents a Gestiona third enriched with selected default-address fields.
 /// </summary>
 /// <param name="FullName">The third full name.</param>
+/// <param name="FirstName">The third first name.</param>
+/// <param name="SecondSurname">The third second surname.</param>
 /// <param name="NifCountry">The NIF country code.</param>
 /// <param name="Id">The third identifier.</param>
 /// <param name="Nif">The third NIF value.</param>
@@ -19,9 +21,12 @@ namespace GestionaGateway.Core.Models;
 /// <param name="Province">The default address province.</param>
 /// <param name="Country">The default address country.</param>
 /// <param name="TypeOfRoad">The default address type of road.</param>
+/// <param name="Zone">The default address zone.</param>
+/// <param name="ParishCode">The default address parish code.</param>
 public sealed record Third(
     [property: JsonPropertyName("full_name")] string? FullName,
     [property: JsonPropertyName("first_name")] string? FirstName,
+    [property: JsonPropertyName("second_surname")] string? SecondSurname,
     [property: JsonPropertyName("nif_country")] string? NifCountry,
     [property: JsonPropertyName("id")] string? Id,
     [property: JsonPropertyName("nif")] string? Nif,
@@ -34,4 +39,6 @@ public sealed record Third(
     [property: JsonPropertyName("zip_code")] string? ZipCode,
     [property: JsonPropertyName("province")] string? Province,
     [property: JsonPropertyName("country")] string? Country,
-    [property: JsonPropertyName("type_of_road")] string? TypeOfRoad);
+    [property: JsonPropertyName("type_of_road")] string? TypeOfRoad,
+    [property: JsonPropertyName("zone")] string? Zone,
+    [property: JsonPropertyName("parish_code")] string? ParishCode);

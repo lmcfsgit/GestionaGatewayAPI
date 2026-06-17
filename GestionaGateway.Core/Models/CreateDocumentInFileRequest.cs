@@ -23,12 +23,12 @@ public sealed record CreateDocumentInFileRequest
     /// <summary>
     /// Gets the upstream trashed flag value.
     /// </summary>
-    public string Trashed { get; init; } = null!;
+    // public string Trashed { get; init; } = null!;
 
     /// <summary>
     /// Gets the upstream version value.
     /// </summary>
-    public string Version { get; init; } = null!;
+    // public string Version { get; init; } = null!;
 
     /// <summary>
     /// Gets the external URL used when creating an external URL document.

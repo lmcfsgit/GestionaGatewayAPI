@@ -33,6 +33,73 @@ public sealed class ProcessesController : ControllerBase
     }
 
     /// <summary>
+    /// Resolves the Gestiona file identifier associated with a process number.
+    /// </summary>
+    /// <param name="processNumber">The external process number used to resolve the Gestiona file identifier.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A payload containing the resolved Gestiona file identifier and original process number.</returns>
+    [HttpGet]
+    public async Task<ActionResult<GatewayResponse>> GetProcessByProcessNumber(
+        [FromQuery(Name = "process_number")] string processNumber,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received process lookup request for process number {ProcessNumber} with operationId {OperationId}",
+            nameof(GetProcessByProcessNumber),
+            processNumber,
+            operationId);
+
+        if (string.IsNullOrWhiteSpace(processNumber))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "process_number query parameter is required.");
+        }
+
+        if (string.Equals(processNumber, "{{process_number}}", StringComparison.Ordinal))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "process_number query parameter contains an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.GetProcessAsync(
+            processNumber,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(
+            operationId,
+            true,
+            new ProcessResponse(
+                result.ProcessId!,
+                result.ProcessNumber!)));
+    }
+
+    /// <summary>
     /// Gets the third identifiers associated with a Gestiona process resolved from a process number.
     /// </summary>
     /// <param name="processNumber">The external process number used to resolve the Gestiona file identifier.</param>
@@ -463,6 +530,14 @@ public sealed class ProcessesController : ControllerBase
                     message)));
     }
 
+    /// <summary>
+    /// Creates a standardized process-thirds error response payload.
+    /// </summary>
+    /// <param name="operationId">The optional operation identifier associated with the request.</param>
+    /// <param name="statusCode">The HTTP status code to return.</param>
+    /// <param name="failureKind">The classified reason for the failure.</param>
+    /// <param name="message">The human-readable error message.</param>
+    /// <returns>An <see cref="ActionResult{TValue}"/> containing the process-thirds error envelope.</returns>
     private ActionResult<GatewayResponse> CreateProcessThirdsErrorResponse(
         string? operationId,
         int statusCode,
@@ -475,6 +550,32 @@ public sealed class ProcessesController : ControllerBase
                 operationId,
                 false,
                 new ProcessThirdsError(
+                    statusCode,
+                    ReasonPhrases.GetReasonPhrase(statusCode),
+                    failureKind.ToString(),
+                    message)));
+    }
+
+    /// <summary>
+    /// Creates a standardized process lookup error response payload.
+    /// </summary>
+    /// <param name="operationId">The optional operation identifier associated with the request.</param>
+    /// <param name="statusCode">The HTTP status code to return.</param>
+    /// <param name="failureKind">The classified reason for the failure.</param>
+    /// <param name="message">The human-readable error message.</param>
+    /// <returns>An <see cref="ActionResult{TValue}"/> containing the process lookup error envelope.</returns>
+    private ActionResult<GatewayResponse> CreateProcessErrorResponse(
+        string? operationId,
+        int statusCode,
+        GetProcessFailureKind failureKind,
+        string message)
+    {
+        return StatusCode(
+            statusCode,
+            new GatewayResponse(
+                operationId,
+                false,
+                new ProcessError(
                     statusCode,
                     ReasonPhrases.GetReasonPhrase(statusCode),
                     failureKind.ToString(),

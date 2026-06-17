@@ -120,8 +120,8 @@ public sealed class GestionaProcessService : IGestionaProcessService
         {
             Name = documentName,
             MetadataLanguage = "ES", // Is this important to set? Should it be configurable?
-            Trashed = "false",
-            Version = "1" // ?? Is this required for creation? Should it be configurable?
+            // Trashed = "false",
+            // Version = "1" // ?? Is this required for creation? Should it be configurable?
         };
 
         CreateDocumentAndFolderResponse? createdDocument;
@@ -309,6 +309,71 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    public async Task<GetProcessResult> GetProcessAsync(
+        string processNumber,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. ProcessNumber={ProcessNumber}",
+            nameof(GetProcessAsync),
+            processNumber);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = ResolveAccessToken(accessTokenOverride);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            _logger.LogWarning("({Method}) failed at step {Step} for process number {ProcessNumber}", nameof(GetProcessAsync), "ValidateConfiguration:GestionaApiBaseUrl", processNumber);
+            return ProcessFailure(GetProcessFailureKind.Configuration, "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            _logger.LogWarning("({Method}) failed at step {Step} for process number {ProcessNumber}", nameof(GetProcessAsync), "ValidateConfiguration:AccessToken", processNumber);
+            return ProcessFailure(GetProcessFailureKind.Configuration, "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(processNumber))
+        {
+            _logger.LogWarning("({Method}) failed at step {Step}", nameof(GetProcessAsync), "ValidateProcessNumber");
+            return ProcessFailure(GetProcessFailureKind.Validation, "processNumber is required.");
+        }
+
+        var fileIdResult = await _gestionaApiClient.GetFileIdFromProcessCode(
+            gestionaApiBaseUrl,
+            accessToken,
+            processNumber,
+            cancellationToken);
+
+        if (!fileIdResult.Success || string.IsNullOrWhiteSpace(fileIdResult.Value))
+        {
+            _logger.LogWarning("({Method}) failed at step {Step} for process number {ProcessNumber}", nameof(GetProcessAsync), "ResolveFileIdFromProcessCode", processNumber);
+            var failureKind = fileIdResult.StatusCode == 204
+                ? GetProcessFailureKind.NotFound
+                : GetProcessFailureKind.Upstream;
+            var errorMessage = fileIdResult.StatusCode == 204
+                ? $"No Gestiona file was found for process number: {processNumber}."
+                : "Failed to resolve Gestiona file ID.";
+
+            return ProcessFailure(failureKind, errorMessage, GetUpstreamErrorStatusCode(fileIdResult.StatusCode));
+        }
+
+        _logger.LogInformation(
+            "({Method}) succeeded. ProcessNumber={ProcessNumber}, FileId={FileId}",
+            nameof(GetProcessAsync),
+            processNumber,
+            fileIdResult.Value);
+
+        return new GetProcessResult(
+            true,
+            GetProcessFailureKind.None,
+            null,
+            fileIdResult.Value,
+            processNumber,
+            null);
+    }
+
     public async Task<GetProcessThirdsResult> GetProcessThirdsAsync(
         string processId,
         bool resolveFileIdFromProcessCode,
@@ -423,6 +488,14 @@ public sealed class GestionaProcessService : IGestionaProcessService
         int? upstreamStatusCode = null)
     {
         return new GetProcessThirdsResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
+    }
+
+    private static GetProcessResult ProcessFailure(
+        GetProcessFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetProcessResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
     }
 
     private string? ResolveAccessToken(string? accessTokenOverride)

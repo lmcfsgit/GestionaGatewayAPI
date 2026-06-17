@@ -26,21 +26,24 @@ public sealed class GestionaThirdServiceTests
             {
                 requestedThirdId = thirdId;
                 return Task.FromResult(new GestionaApiCallResult<Third?>(200, true, new Third(
-                    "Luis Silva Fernandes",
-                    "ESP",
-                    thirdId,
-                    "196510880",
-                    "PHISIC",
-                    "luis@example.com",
-                    "913347827",
-                    "OWN",
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null)));
+                    FullName: "Luis Silva Fernandes",
+                    FirstName: "Luis",
+                    SecondSurname: "Fernandes",
+                    NifCountry: "ESP",
+                    Id: thirdId,
+                    Nif: "196510880",
+                    Type: "PHISIC",
+                    Email: "luis@example.com",
+                    Mobile: "913347827",
+                    NifType: "OWN",
+                    Address: null,
+                    Number: null,
+                    ZipCode: null,
+                    Province: null,
+                    Country: null,
+                    TypeOfRoad: null,
+                    Zone: null,
+                    ParishCode: null)));
             },
             GetThirdDefaultAddressAsyncHandler = (baseUrl, token, thirdId, cancellationToken) =>
             {
@@ -50,7 +53,12 @@ public sealed class GestionaThirdServiceTests
                     "4440368",
                     "PORTO",
                     "Portugal",
-                    "CL")));
+                    "CL",
+                    "Norte",
+                    [
+                        new GestionaLink("self", "https://gestiona.example/rest/thirds/third-123/default-address", null),
+                        new GestionaLink("parish", "https://gestiona.example/rest/parishes/130101", null)
+                    ])));
             }
         };
         var service = CreateService(apiClient);
@@ -65,9 +73,13 @@ public sealed class GestionaThirdServiceTests
         Assert.Equal("third-123", requestedThirdId);
         Assert.NotNull(result.Third);
         Assert.Equal("Luis Silva Fernandes", result.Third.FullName);
+        Assert.Equal("Luis", result.Third.FirstName);
+        Assert.Equal("Fernandes", result.Third.SecondSurname);
         Assert.Equal("Rua das Cancelas", result.Third.Address);
         Assert.Equal("4440368", result.Third.ZipCode);
         Assert.Equal("CL", result.Third.TypeOfRoad);
+        Assert.Equal("Norte", result.Third.Zone);
+        Assert.Equal("130101", result.Third.ParishCode);
     }
 
     [Fact]
@@ -109,21 +121,24 @@ public sealed class GestionaThirdServiceTests
             {
                 receivedTokens.Add(token);
                 return Task.FromResult(new GestionaApiCallResult<Third?>(200, true, new Third(
-                    "Luis Silva Fernandes",
-                    "ESP",
-                    thirdId,
-                    "196510880",
-                    "PHISIC",
-                    "luis@example.com",
-                    "913347827",
-                    "OWN",
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null)));
+                    FullName: "Luis Silva Fernandes",
+                    FirstName: "Luis",
+                    SecondSurname: "Fernandes",
+                    NifCountry: "ESP",
+                    Id: thirdId,
+                    Nif: "196510880",
+                    Type: "PHISIC",
+                    Email: "luis@example.com",
+                    Mobile: "913347827",
+                    NifType: "OWN",
+                    Address: null,
+                    Number: null,
+                    ZipCode: null,
+                    Province: null,
+                    Country: null,
+                    TypeOfRoad: null,
+                    Zone: null,
+                    ParishCode: null)));
             },
             GetThirdDefaultAddressAsyncHandler = (baseUrl, token, thirdId, cancellationToken) =>
             {

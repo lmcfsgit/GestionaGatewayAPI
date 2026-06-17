@@ -29,3 +29,27 @@
 ### Improvements
 
 - Added swagger support to the API: .../swagger
+
+<center>_Version 1.3.1_</center>
+
+### Features
+
+- New endpoint for resolving process id form process number: .../processes?process_number=<process number>
+
+### Bug Fixs
+
+### Improvements
+
+- Added log debug information for the request body sent to Gestiona API
+- Api version is read from .csproj instead of appsettings.json
+- Added Zone (Concelho) to third address
+- Added ParishCode obtained from last href segment of the link where ref="parish"
+- Added second_surname from Gestiona to the third model
+
+<center>_Version 1.?.?_</center>
+
+### Features
+
+### Bug Fixs
+
+### Improvements
