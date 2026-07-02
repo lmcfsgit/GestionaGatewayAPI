@@ -12,8 +12,20 @@ internal static class GestionaRequestHeaders
         }
 
         var accessToken = values.ToString();
-        return string.IsNullOrWhiteSpace(accessToken)
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return null;
+        }
+
+        accessToken = accessToken.Trim();
+        return IsUnresolvedVariable(accessToken)
             ? null
             : accessToken;
+    }
+
+    private static bool IsUnresolvedVariable(string value)
+    {
+        return value.StartsWith("{{", StringComparison.Ordinal)
+            && value.EndsWith("}}", StringComparison.Ordinal);
     }
 }

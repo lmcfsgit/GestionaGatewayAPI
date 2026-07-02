@@ -46,10 +46,14 @@
 - Added ParishCode obtained from last href segment of the link where ref="parish"
 - Added second_surname from Gestiona to the third model
 
-<center>_Version 1.?.?_</center>
+<center>_Version 1.3.2_</center>
 
 ### Features
 
 ### Bug Fixs
 
+- When testing with Postman the header X-User-Access-Token was sent with unresolved variable = {{X-User-Access-Token}}
+
 ### Improvements
+
+- Logs the masked authentication token in debug mode

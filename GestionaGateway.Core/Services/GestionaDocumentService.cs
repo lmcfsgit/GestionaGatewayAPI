@@ -48,7 +48,10 @@ public sealed class GestionaDocumentService : IGestionaDocumentService
             documentId);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = ResolveAccessToken(accessTokenOverride);
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -126,10 +129,4 @@ public sealed class GestionaDocumentService : IGestionaDocumentService
         return new DownloadDocumentResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
-    private string? ResolveAccessToken(string? accessTokenOverride)
-    {
-        return string.IsNullOrWhiteSpace(accessTokenOverride)
-            ? _gestionaOptions.AccessToken
-            : accessTokenOverride;
-    }
 }

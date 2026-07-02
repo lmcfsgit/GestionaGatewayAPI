@@ -48,7 +48,10 @@ public sealed class GestionaThirdService : IGestionaThirdService
             thirdId);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = ResolveAccessToken(accessTokenOverride);
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -146,7 +149,10 @@ public sealed class GestionaThirdService : IGestionaThirdService
             nif);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = ResolveAccessToken(accessTokenOverride);
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -257,10 +263,4 @@ public sealed class GestionaThirdService : IGestionaThirdService
             : null;
     }
 
-    private string? ResolveAccessToken(string? accessTokenOverride)
-    {
-        return string.IsNullOrWhiteSpace(accessTokenOverride)
-            ? _gestionaOptions.AccessToken
-            : accessTokenOverride;
-    }
 }

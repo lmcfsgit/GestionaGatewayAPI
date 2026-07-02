@@ -66,7 +66,10 @@ public sealed class GestionaProcessService : IGestionaProcessService
             !string.IsNullOrWhiteSpace(request.Url));
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = ResolveAccessToken(accessTokenOverride);
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -320,7 +323,10 @@ public sealed class GestionaProcessService : IGestionaProcessService
             processNumber);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = ResolveAccessToken(accessTokenOverride);
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
         {
@@ -387,7 +393,10 @@ public sealed class GestionaProcessService : IGestionaProcessService
             resolveFileIdFromProcessCode);
 
         var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
-        var accessToken = ResolveAccessToken(accessTokenOverride);
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
 
 
         if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
@@ -496,13 +505,6 @@ public sealed class GestionaProcessService : IGestionaProcessService
         int? upstreamStatusCode = null)
     {
         return new GetProcessResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
-    }
-
-    private string? ResolveAccessToken(string? accessTokenOverride)
-    {
-        return string.IsNullOrWhiteSpace(accessTokenOverride)
-            ? _gestionaOptions.AccessToken
-            : accessTokenOverride;
     }
 
     private static int? GetUpstreamErrorStatusCode(int statusCode)
