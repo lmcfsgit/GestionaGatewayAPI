@@ -43,7 +43,7 @@
 - Added log debug information for the request body sent to Gestiona API
 - Api version is read from .csproj instead of appsettings.json
 - Added Zone (Concelho) to third address
-- Added ParishCode obtained from last href segment of the link where ref="parish"
+- Added ParishCode (Freguesia) obtained from last href segment of the link where ref="parish"
 - Added second_surname from Gestiona to the third model
 
 <center>_Version 1.3.2_</center>
@@ -57,3 +57,15 @@
 ### Improvements
 
 - Logs the masked authentication token in debug mode
+
+<center>_Version 1.4.0_</center>
+
+### Features
+
+- New endpoints:
+  - GET .../processes/{process_id}/documents
+  - GET .../processes/{process_id}/documents/{document_id}
+
+### Bug Fixs
+
+### Improvements

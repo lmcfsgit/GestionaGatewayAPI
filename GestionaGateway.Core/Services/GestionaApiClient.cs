@@ -592,6 +592,75 @@ public sealed class GestionaApiClient : IGestionaApiClient
     }
 
     /// <summary>
+    /// Gets the documents and folders associated with a Gestiona file.
+    /// </summary>
+    public async Task<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>> GetProcessDocumentsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string? documentId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = BuildDocumentsAndFoldersRoute(processId, documentId);
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+
+        _logger.LogInformation(
+            "({Method}) getting Gestiona documents and folders for process {ProcessId} via {RequestUri}",
+            nameof(GetProcessDocumentsAsync),
+            processId,
+            new Uri(httpClient.BaseAddress, request.RequestUri!));
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetProcessDocumentsAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) process documents response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetProcessDocumentsAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed for process {ProcessId} with status code {StatusCode}, Body={Body}",
+                nameof(GetProcessDocumentsAsync),
+                processId,
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<IReadOnlyList<ProcessDocument>>((int)response.StatusCode, false, []);
+        }
+
+        if (string.IsNullOrWhiteSpace(responseBody) ||
+            responseBody is "<empty>" or "<no content>")
+        {
+            return new GestionaApiCallResult<IReadOnlyList<ProcessDocument>>((int)response.StatusCode, true, []);
+        }
+
+        try
+        {
+            var upstream = JsonSerializer.Deserialize<ProcessDocumentsAndFoldersResponse>(responseBody);
+            var documents = upstream?.Content?
+                .Select(item => new ProcessDocument(
+                    item.Type ?? string.Empty,
+                    item.Rel ?? string.Empty,
+                    GetLastHrefSegment(item.Href) ?? string.Empty))
+                .ToArray() ?? [];
+
+            return new GestionaApiCallResult<IReadOnlyList<ProcessDocument>>((int)response.StatusCode, true, documents);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "({Method}) failed to parse Gestiona process documents response body.", nameof(GetProcessDocumentsAsync));
+            return new GestionaApiCallResult<IReadOnlyList<ProcessDocument>>((int)response.StatusCode, false, []);
+        }
+    }
+
+    /// <summary>
     /// Gets a third from Gestiona.
     /// </summary>
     /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>

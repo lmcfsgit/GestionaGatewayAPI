@@ -2,18 +2,18 @@
 import argparse
 import csv
 import json
-from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
+from urllib.parse import urlparse
 
 
-DEFAULT_INPUT = Path("logs") / "AccessTokens.json"
-DEFAULT_OUTPUT = Path("logs") / "AccessTokens.html"
+DEFAULT_INPUT = Path("logs") / "PendingTokens.json"
+DEFAULT_OUTPUT = Path("logs") / "PendingTokens.html"
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Render logs/AccessTokens.json as a readable HTML report."
+        description="Render logs/PendingTokens.json as an HTML table."
     )
     parser.add_argument(
         "-i",
@@ -48,30 +48,29 @@ def read_tokens(path):
     return data
 
 
-def format_authorization_date(value):
-    if value is None or value == "":
-        return ""
-
-    text = str(value)
-    try:
-        timestamp = int(text)
-    except ValueError:
-        return escape(text)
-
-    formatted = datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime(
-        "%Y-%m-%d %H:%M:%S UTC"
-    )
-    return f"{escape(text)}<br><span class=\"muted\">{formatted}</span>"
-
-
 def collect_fields(tokens):
     fields = []
     for token in tokens.values():
         if isinstance(token, dict):
-            for field in token.keys():
+            for field in token:
                 if field not in fields:
                     fields.append(field)
     return fields
+
+
+def render_value(field, value):
+    text = "" if value is None else str(value)
+    safe_text = escape(text)
+
+    if field.lower() in {"uri", "url"}:
+        parsed = urlparse(text)
+        if parsed.scheme in {"http", "https"}:
+            return (
+                f'<a href="{escape(text, quote=True)}" target="_blank" '
+                f'rel="noopener noreferrer">{safe_text}</a>'
+            )
+
+    return safe_text
 
 
 def render_html(tokens):
@@ -82,15 +81,11 @@ def render_html(tokens):
         if not isinstance(token, dict):
             token = {"value": token}
 
-        cells = [f"<td class=\"object-id\">{escape(str(object_id))}</td>"]
-        for field in fields:
-            value = token.get(field, "")
-            if field == "authorization_date":
-                rendered_value = format_authorization_date(value)
-            else:
-                rendered_value = escape("" if value is None else str(value))
-            cells.append(f"<td>{rendered_value}</td>")
-
+        cells = [f'<td class="object-id">{escape(str(object_id))}</td>']
+        cells.extend(
+            f"<td>{render_value(field, token.get(field, ''))}</td>"
+            for field in fields
+        )
         rows.append(f"<tr>{''.join(cells)}</tr>")
 
     header_cells = ["<th>user_id</th>"] + [
@@ -102,45 +97,26 @@ def render_html(tokens):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Access Tokens</title>
+  <title>Pending Tokens</title>
   <style>
     :root {{
-      color-scheme: light;
-      font-family: Segoe UI, Arial, sans-serif;
-      background: #f6f8fb;
+      font-family: "Segoe UI", Arial, sans-serif;
       color: #1f2937;
+      background: #f6f8fb;
     }}
-    body {{
-      margin: 0;
-      padding: 32px;
-    }}
-    main {{
-      max-width: 1280px;
-      margin: 0 auto;
-    }}
-    h1 {{
-      margin: 0 0 6px;
-      font-size: 28px;
-      font-weight: 650;
-    }}
-    .summary {{
-      margin: 0 0 22px;
-      color: #596579;
-    }}
+    body {{ margin: 0; padding: 32px; }}
+    main {{ max-width: 1280px; margin: 0 auto; }}
+    h1 {{ margin: 0 0 6px; font-size: 28px; }}
+    .summary {{ margin: 0 0 22px; color: #596579; }}
     .table-wrap {{
       overflow-x: auto;
-      background: #ffffff;
+      background: #fff;
       border: 1px solid #d9e0ea;
       border-radius: 8px;
       box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
     }}
-    table {{
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 900px;
-    }}
-    th,
-    td {{
+    table {{ width: 100%; border-collapse: collapse; min-width: 900px; }}
+    th, td {{
       padding: 12px 14px;
       border-bottom: 1px solid #e6ebf2;
       text-align: left;
@@ -148,43 +124,25 @@ def render_html(tokens):
       font-size: 14px;
       line-height: 1.35;
     }}
-    th {{
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      background: #eef3f8;
-      color: #344054;
-      font-weight: 650;
-    }}
-    tr:last-child td {{
-      border-bottom: 0;
-    }}
-    td {{
-      word-break: break-word;
-    }}
+    th {{ background: #eef3f8; color: #344054; font-weight: 650; }}
+    tr:last-child td {{ border-bottom: 0; }}
+    td {{ overflow-wrap: anywhere; }}
     .object-id {{
       font-family: Consolas, Monaco, monospace;
       font-weight: 650;
       white-space: nowrap;
     }}
-    .muted {{
-      color: #667085;
-      font-size: 12px;
-    }}
+    a {{ color: #175cd3; }}
   </style>
 </head>
 <body>
   <main>
-    <h1>Access Tokens</h1>
-    <p class="summary">{len(tokens)} object(s) loaded from AccessTokens.json.</p>
+    <h1>Pending Tokens</h1>
+    <p class="summary">{len(tokens)} object(s) loaded from {escape(DEFAULT_INPUT.name)}.</p>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>{''.join(header_cells)}</tr>
-        </thead>
-        <tbody>
-          {''.join(rows)}
-        </tbody>
+        <thead><tr>{''.join(header_cells)}</tr></thead>
+        <tbody>{''.join(rows)}</tbody>
       </table>
     </div>
   </main>
@@ -223,7 +181,6 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(html, encoding="utf-8")
     write_csv(tokens, csv_output)
-
     print(f"Wrote {len(tokens)} object(s) to {args.output} and {csv_output}")
 
 

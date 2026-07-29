@@ -148,6 +148,97 @@ public sealed class GestionaProcessServiceTests
         Assert.Equal(new[] { "request-token", "request-token" }, receivedTokens);
     }
 
+    [Fact]
+    public async Task GetProcessDocumentsAsync_ReturnsMappedDocumentsAndFolders()
+    {
+        var requestedFileId = string.Empty;
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessDocumentsAsyncHandler = (baseUrl, token, processId, documentId, cancellationToken) =>
+            {
+                requestedFileId = processId;
+                IReadOnlyList<ProcessDocument> documents =
+                [
+                    new("DOC", "POC_SIGMA_Gestiona", "document-1"),
+                    new("FOLDER", "xxxx", "folder-1")
+                ];
+                return Task.FromResult(
+                    new GestionaApiCallResult<IReadOnlyList<ProcessDocument>>(200, true, documents));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessDocumentsAsync(
+            "file-123",
+            documentId: null,
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("file-123", requestedFileId);
+        Assert.Collection(
+            result.Documents!,
+            item =>
+            {
+                Assert.Equal("DOC", item.Type);
+                Assert.Equal("POC_SIGMA_Gestiona", item.Name);
+                Assert.Equal("document-1", item.Id);
+            },
+            item =>
+            {
+                Assert.Equal("FOLDER", item.Type);
+                Assert.Equal("xxxx", item.Name);
+                Assert.Equal("folder-1", item.Id);
+            });
+    }
+
+    [Fact]
+    public async Task GetProcessDocumentsAsync_WhenUpstreamReturnsNotFound_ReturnsNotFound()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessDocumentsAsyncHandler = (baseUrl, token, processId, documentId, cancellationToken) =>
+                Task.FromResult(
+                    new GestionaApiCallResult<IReadOnlyList<ProcessDocument>>(404, false, []))
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessDocumentsAsync(
+            "missing-file",
+            documentId: null,
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(GetProcessDocumentsFailureKind.NotFound, result.FailureKind);
+        Assert.Equal(404, result.UpstreamStatusCode);
+    }
+
+    [Fact]
+    public async Task GetProcessDocumentsAsync_WithDocumentId_ForwardsDocumentId()
+    {
+        string? requestedDocumentId = null;
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessDocumentsAsyncHandler = (baseUrl, token, processId, documentId, cancellationToken) =>
+            {
+                requestedDocumentId = documentId;
+                return Task.FromResult(
+                    new GestionaApiCallResult<IReadOnlyList<ProcessDocument>>(200, true, []));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessDocumentsAsync(
+            "file-123",
+            "folder-456",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("folder-456", requestedDocumentId);
+    }
+
     private static GestionaProcessService CreateService(TestGestionaApiClient apiClient)
     {
         return new GestionaProcessService(

@@ -14,6 +14,7 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
     public Func<string, string, string, string?, CreateDocumentInFileRequest, CancellationToken, Task<GestionaApiCallResult<CreateDocumentAndFolderResponse?>>>? CreateFolderAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<DownloadedDocument?>>>? DownloadDocumentAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<string>>>>? GetProcessThirdIdsAsyncHandler { get; init; }
+    public Func<string, string, string, string?, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>>>? GetProcessDocumentsAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<Third?>>>? GetThirdAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? GetThirdIdByNifAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<ThirdDefaultAddress?>>>? GetThirdDefaultAddressAsyncHandler { get; init; }
@@ -103,6 +104,16 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
         CancellationToken cancellationToken)
     {
         return Invoke<GestionaApiCallResult<IReadOnlyList<string>>>(GetProcessThirdIdsAsyncHandler, gestionaApiBaseUrl, accessToken, processId, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>> GetProcessDocumentsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string? documentId,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>>(GetProcessDocumentsAsyncHandler, gestionaApiBaseUrl, accessToken, processId, documentId, cancellationToken);
     }
 
     public Task<GestionaApiCallResult<Third?>> GetThirdAsync(

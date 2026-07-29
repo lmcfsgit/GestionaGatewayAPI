@@ -186,6 +186,144 @@ public sealed class ProcessesController : ControllerBase
             cancellationToken);
     }
 
+    /// <summary>
+    /// Gets the documents and folders associated with a Gestiona process.
+    /// </summary>
+    [HttpGet("{process_id}/documents")]
+    public async Task<ActionResult<GatewayResponse>> GetDocuments(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received process documents request for {ProcessId} with operationId {OperationId}",
+            nameof(GetDocuments),
+            processId,
+            operationId);
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id route parameter is required.");
+        }
+
+        if (string.Equals(processId, "{{process_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id route parameter contains an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.GetProcessDocumentsAsync(
+            processId,
+            documentId: null,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessDocumentsFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.Documents ?? []));
+    }
+
+    /// <summary>
+    /// Gets the documents and folders contained in a process document or folder.
+    /// </summary>
+    [HttpGet("{process_id}/documents/{document_id}")]
+    public async Task<ActionResult<GatewayResponse>> GetDocumentsInDocument(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "document_id")] string documentId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received nested process documents request for {ProcessId}/{DocumentId} with operationId {OperationId}",
+            nameof(GetDocumentsInDocument),
+            processId,
+            documentId,
+            operationId);
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id route parameter is required.");
+        }
+
+        if (string.Equals(processId, "{{process_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id route parameter contains an unresolved variable.");
+        }
+
+        if (string.IsNullOrWhiteSpace(documentId))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "document_id route parameter is required.");
+        }
+
+        if (string.Equals(documentId, "{{document_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "document_id route parameter contains an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.GetProcessDocumentsAsync(
+            processId,
+            documentId,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessDocumentsFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.Documents ?? []));
+    }
+
     private async Task<ActionResult<GatewayResponse>> GetThirdsCore(
         string processId,
         bool resolveFileIdFromProcessCode,
@@ -550,6 +688,24 @@ public sealed class ProcessesController : ControllerBase
                 operationId,
                 false,
                 new ProcessThirdsError(
+                    statusCode,
+                    ReasonPhrases.GetReasonPhrase(statusCode),
+                    failureKind.ToString(),
+                    message)));
+    }
+
+    private ActionResult<GatewayResponse> CreateProcessDocumentsErrorResponse(
+        string? operationId,
+        int statusCode,
+        GetProcessDocumentsFailureKind failureKind,
+        string message)
+    {
+        return StatusCode(
+            statusCode,
+            new GatewayResponse(
+                operationId,
+                false,
+                new ProcessDocumentsError(
                     statusCode,
                     ReasonPhrases.GetReasonPhrase(statusCode),
                     failureKind.ToString(),

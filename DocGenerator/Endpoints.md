@@ -16,6 +16,8 @@
 - [ProcessError](#processerror)
 - [ProcessThirdsResult](#processthirdsresult)
 - [ProcessThirdsError](#processthirdserror)
+- [ProcessDocumentItem](#processdocumentitem)
+- [ProcessDocumentsError](#processdocumentserror)
 - [Download Success Output](#download-success-output)
 
 ### Shared
@@ -34,6 +36,8 @@
 - [8. GET `/processes?process_number=<numero>`](#8-get-processesprocess_numbernumero)
 - [9. GET `/processes/thirds?process_number=<numero>`](#9-get-processesthirdsprocess_numbernumero)
 - [10. GET `/processes/{process_id}/thirds`](#10-get-processesprocess_idthirds)
+- [11. GET `/processes/{process_id}/documents`](#11-get-processesprocess_iddocuments)
+- [12. GET `/processes/{process_id}/documents/{document_id}`](#12-get-processesprocess_iddocumentsdocument_id)
 
 ## Models
 
@@ -240,6 +244,47 @@ Used inside `GatewayResponse.result` on process thirds lookup errors.
 ```
 
 #### Possible `kind` values for process thirds lookup
+
+- `Configuration`
+- `Validation`
+- `NotFound`
+- `Upstream`
+
+### ProcessDocumentItem
+
+Used for each item in `GatewayResponse.result` returned by the process document-listing endpoints.
+
+```json
+{
+  "type": "DOC",
+  "name": "POC_SIGMA_Gestiona",
+  "id": "f5e0364b-9951-449d-8d38-34a6cbfec4d3"
+}
+```
+
+#### Field notes
+
+- `type`
+  The upstream item type, such as `DOC` or `FOLDER`.
+- `name`
+  The upstream `rel` value.
+- `id`
+  The last path segment of the upstream `href`.
+
+### ProcessDocumentsError
+
+Used inside `GatewayResponse.result` when a process document-listing request fails.
+
+```json
+{
+  "code": 400,
+  "name": "Bad Request",
+  "kind": "Validation",
+  "message": "string"
+}
+```
+
+#### Possible `kind` values
 
 - `Configuration`
 - `Validation`
@@ -993,3 +1038,120 @@ Gets the third identifiers associated with a Gestiona process file.
 - The returned `thirds` field joins all extracted third ids with semicolons
 - If `process_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{process_id}}`, the endpoint returns HTTP `400`
+
+### 11. GET `/processes/{process_id}/documents`
+
+Gets the documents and folders at the root of a Gestiona process file.
+
+#### Route parameters
+
+- `process_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/documents-and-folders`
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: array of `ProcessDocumentItem`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": [
+    {
+      "type": "DOC",
+      "name": "POC_SIGMA_Gestiona",
+      "id": "f5e0364b-9951-449d-8d38-34a6cbfec4d3"
+    },
+    {
+      "type": "FOLDER",
+      "name": "xxxx",
+      "id": "12fb9b74-2111-417f-ae4f-c2b7fe2976f7"
+    }
+  ]
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessDocumentsError`
+
+#### Notes
+
+- Both `DOC` and `FOLDER` entries from the upstream `content` array are returned.
+- Each upstream `rel` is mapped to `name`.
+- Each `id` is extracted from the last path segment of the upstream `href`.
+- If `process_id` is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved variable such as `{{process_id}}`, the endpoint returns HTTP `400`.
+
+### 12. GET `/processes/{process_id}/documents/{document_id}`
+
+Gets the documents and folders contained inside the specified Gestiona document or folder.
+
+#### Route parameters
+
+- `process_id` required
+- `document_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/documents-and-folders/{document_id}`
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: array of `ProcessDocumentItem`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": [
+    {
+      "type": "DOC",
+      "name": "Nested document",
+      "id": "347d4226-093f-412d-8376-e36d36374d13"
+    }
+  ]
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessDocumentsError`
+
+#### Notes
+
+- The response mapping is identical to `GET /processes/{process_id}/documents`.
+- Both `DOC` and `FOLDER` entries from the upstream `content` array are returned.
+- If either route parameter is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved `{{process_id}}` or `{{document_id}}` variable, the endpoint returns HTTP `400`.

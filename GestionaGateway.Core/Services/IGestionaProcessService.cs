@@ -52,4 +52,13 @@ public interface IGestionaProcessService
         bool resolveFileIdFromProcessCode,
         string? accessTokenOverride,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Gets the documents and folders associated with a Gestiona process file.
+    /// </summary>
+    Task<GetProcessDocumentsResult> GetProcessDocumentsAsync(
+        string processId,
+        string? documentId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken);
 }

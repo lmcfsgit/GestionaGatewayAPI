@@ -483,6 +483,77 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    public async Task<GetProcessDocumentsResult> GetProcessDocumentsAsync(
+        string processId,
+        string? documentId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. ProcessId={ProcessId}, DocumentId={DocumentId}",
+            nameof(GetProcessDocumentsAsync),
+            processId,
+            documentId);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return DocumentsFailure(
+                GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return DocumentsFailure(
+                GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return DocumentsFailure(
+                GetProcessDocumentsFailureKind.Validation,
+                "processId is required.");
+        }
+
+        var documentsResult = await _gestionaApiClient.GetProcessDocumentsAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            processId,
+            documentId,
+            cancellationToken);
+
+        if (!documentsResult.Success)
+        {
+            var failureKind = documentsResult.StatusCode == 404
+                ? GetProcessDocumentsFailureKind.NotFound
+                : GetProcessDocumentsFailureKind.Upstream;
+            return DocumentsFailure(
+                failureKind,
+                $"Failed to get documents from Gestiona process: {processId}.",
+                GetUpstreamErrorStatusCode(documentsResult.StatusCode));
+        }
+
+        _logger.LogInformation(
+            "({Method}) succeeded. ProcessId={ProcessId}, ItemCount={ItemCount}",
+            nameof(GetProcessDocumentsAsync),
+            processId,
+            documentsResult.Value?.Count ?? 0);
+
+        return new GetProcessDocumentsResult(
+            true,
+            GetProcessDocumentsFailureKind.None,
+            null,
+            documentsResult.Value ?? [],
+            null);
+    }
+
     private static CreateDocumentInProcessResult Failure(
         CreateDocumentInProcessFailureKind failureKind,
         string errorMessage,
@@ -497,6 +568,14 @@ public sealed class GestionaProcessService : IGestionaProcessService
         int? upstreamStatusCode = null)
     {
         return new GetProcessThirdsResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
+    }
+
+    private static GetProcessDocumentsResult DocumentsFailure(
+        GetProcessDocumentsFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetProcessDocumentsResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
     private static GetProcessResult ProcessFailure(

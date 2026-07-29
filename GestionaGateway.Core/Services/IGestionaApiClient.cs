@@ -146,6 +146,16 @@ public interface IGestionaApiClient
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Gets the documents and folders contained in a Gestiona process file.
+    /// </summary>
+    Task<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>> GetProcessDocumentsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string? documentId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Gets a third from Gestiona.
     /// </summary>
     /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
