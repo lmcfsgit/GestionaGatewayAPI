@@ -9,6 +9,8 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
     public Func<string, string, string, byte[], CancellationToken, Task<GestionaApiCallResult>>? UploadDocumentContentAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? GetFileSelfHrefAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? GetFileIdFromProcessCodeHandler { get; init; }
+    public Func<string, string, string, string, CancellationToken, Task<GestionaApiCallResult<CreateProcessFileResponse?>>>? CreateProcessFileAsyncHandler { get; init; }
+    public Func<string, string, string, OpenProcessFileRequest, CancellationToken, Task<GestionaApiCallResult<OpenProcessFileResponse?>>>? OpenProcessFileAsyncHandler { get; init; }
     public Func<string, string, string, string?, CreateDocumentInFileRequest, CancellationToken, Task<GestionaApiCallResult<CreateDocumentAndFolderResponse?>>>? CreateDocumentAndFolderAsyncHandler { get; init; }
     public Func<string, string, string, string?, CreateDocumentInFileRequest, CancellationToken, Task<GestionaApiCallResult<CreateDocumentAndFolderResponse?>>>? CreateDocumentUrlAsyncHandler { get; init; }
     public Func<string, string, string, string?, CreateDocumentInFileRequest, CancellationToken, Task<GestionaApiCallResult<CreateDocumentAndFolderResponse?>>>? CreateFolderAsyncHandler { get; init; }
@@ -53,6 +55,26 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
         CancellationToken cancellationToken)
     {
         return Invoke<GestionaApiCallResult<string?>>(GetFileIdFromProcessCodeHandler, gestionaApiBaseUrl, accessToken, processId, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<CreateProcessFileResponse?>> CreateProcessFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string activityId,
+        string procedureId,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<CreateProcessFileResponse?>>(CreateProcessFileAsyncHandler, gestionaApiBaseUrl, accessToken, activityId, procedureId, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<OpenProcessFileResponse?>> OpenProcessFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileOpenHref,
+        OpenProcessFileRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<OpenProcessFileResponse?>>(OpenProcessFileAsyncHandler, gestionaApiBaseUrl, accessToken, fileOpenHref, request, cancellationToken);
     }
 
     public Task<GestionaApiCallResult<CreateDocumentAndFolderResponse?>> CreateDocumentAndFolderAsync(

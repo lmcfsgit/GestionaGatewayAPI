@@ -46,7 +46,12 @@ public sealed class Program
 
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddSwaggerGen(options =>
+        {
+            options.IncludeXmlComments(
+                typeof(Program).Assembly,
+                includeControllerXmlComments: true);
+        });
         builder.Services.AddHttpClient();
         builder.Services.AddScoped<IGestionaApiClient, GestionaApiClient>();
         builder.Services.AddScoped<IGestionaProcessService, GestionaProcessService>();

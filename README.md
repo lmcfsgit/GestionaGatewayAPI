@@ -63,9 +63,22 @@
 ### Features
 
 - New endpoints:
-  - GET .../processes/{process_id}/documents
-  - GET .../processes/{process_id}/documents/{document_id}
+  - GET .../processes/{process_id}/documents: retrieves all documents from process
+  - GET .../processes/{process_id}/documents/{document_id}: retrieves all documents from folder
 
 ### Bug Fixs
 
 ### Improvements
+
+<center>_Version 1.5.0_</center>
+
+### Features
+
+- New endpoints:
+  - POST .../processes: creates a Gestiona process
+
+### Bug Fixs
+
+### Improvements
+
+- Added support for swagger Controller Xml Comments

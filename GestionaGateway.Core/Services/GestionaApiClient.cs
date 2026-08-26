@@ -13,12 +13,14 @@ public sealed class GestionaApiClient : IGestionaApiClient
     private const string ThirdsFilterContentType = "application/vnd.gestiona.filter.thirds+json";
     private const string FileDocumentContentType = "application/vnd.gestiona.file-document+json; version=4";
     private const string FileFolderContentType = "application/vnd.gestiona.file-folder";
+    private const string FileOpeningContentType = "application/vnd.gestiona.file-opening+json; version=1";
 
     // These route constants are defined here to ensure consistency across the client methods and to make
     // it easier to update if the API routes change in the future
     private const string UploadsRoute = "uploads";
     private const string FilesRoute = "files";
     private const string ThirdsRoute = "thirds";
+    private const string Catalog2015ProceduresRoute = "catalog-2015/procedures";
     private const string DocumentsAndFoldersRoute = "documents-and-folders";
     private const string ContentSmallDocumentInstancesRoute = "content/small/documentinstances";
 
@@ -348,6 +350,133 @@ public sealed class GestionaApiClient : IGestionaApiClient
             return new GestionaApiCallResult<string?>((int)response.StatusCode, false, null);
         }
 
+    }
+
+    public async Task<GestionaApiCallResult<CreateProcessFileResponse?>> CreateProcessFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string activityId,
+        string procedureId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{Catalog2015ProceduresRoute}/{Uri.EscapeDataString(activityId)}/external-procedures/{Uri.EscapeDataString(procedureId)}/create-file";
+        using var request = new HttpRequestMessage(HttpMethod.Post, route)
+        {
+            Content = new ByteArrayContent([])
+        };
+
+        _logger.LogInformation(
+            "({Method}) creating Gestiona process file via {RequestUri}",
+            nameof(CreateProcessFileAsync),
+            new Uri(httpClient.BaseAddress, request.RequestUri!));
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(CreateProcessFileAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) create-file response: StatusCode={StatusCode}, Body={Body}",
+            nameof(CreateProcessFileAsync),
+            response.StatusCode,
+            responseBody);
+
+        var responseModel = DeserializeResponse<CreateProcessFileResponse>(
+            responseBody,
+            nameof(CreateProcessFileAsync));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed with status code {StatusCode}, Body={Body}",
+                nameof(CreateProcessFileAsync),
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<CreateProcessFileResponse?>((int)response.StatusCode, false, responseModel);
+        }
+
+        return new GestionaApiCallResult<CreateProcessFileResponse?>((int)response.StatusCode, true, responseModel);
+    }
+
+    public async Task<GestionaApiCallResult<OpenProcessFileResponse?>> OpenProcessFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileOpenHref,
+        OpenProcessFileRequest request,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var fileOpenUri = ResolveHrefUri(gestionaApiBaseUrl, fileOpenHref);
+        var payload = new
+        {
+            entry_date = request.EntryDate,
+            free_title = request.FreeTitle,
+            initial_assignation = new[]
+            {
+                new
+                {
+                    rel = "user",
+                    href = request.UserHref
+                }
+            },
+            links = new[]
+            {
+                new
+                {
+                    rel = "management-unit-group",
+                    href = request.GroupHref
+                }
+            }
+        };
+        var serializedPayload = JsonSerializer.Serialize(payload);
+        var requestContent = new StringContent(serializedPayload, Encoding.UTF8);
+        requestContent.Headers.ContentType = MediaTypeHeaderValue.Parse(FileOpeningContentType);
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, fileOpenUri)
+        {
+            Content = requestContent
+        };
+
+        _logger.LogInformation(
+            "({Method}) opening Gestiona process file via {RequestUri}",
+            nameof(OpenProcessFileAsync),
+            fileOpenUri);
+        _logger.LogDebug(
+            "({Method}) Gestiona request body:{NewLine}{RequestBody}",
+            nameof(OpenProcessFileAsync),
+            Environment.NewLine,
+            FormatJsonForLog(serializedPayload));
+
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
+        LogDeprecatedHeader(response, nameof(OpenProcessFileAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) file-open response: StatusCode={StatusCode}, Body={Body}",
+            nameof(OpenProcessFileAsync),
+            response.StatusCode,
+            responseBody);
+
+        var responseModel = DeserializeResponse<OpenProcessFileResponse>(
+            responseBody,
+            nameof(OpenProcessFileAsync));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed with status code {StatusCode}, Body={Body}",
+                nameof(OpenProcessFileAsync),
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<OpenProcessFileResponse?>((int)response.StatusCode, false, responseModel);
+        }
+
+        return new GestionaApiCallResult<OpenProcessFileResponse?>((int)response.StatusCode, true, responseModel);
     }
 
     /// <summary>
@@ -1068,6 +1197,32 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return gestionaApiBaseUrl.EndsWith("/", StringComparison.Ordinal)
             ? gestionaApiBaseUrl
             : $"{gestionaApiBaseUrl}/";
+    }
+
+    private static Uri ResolveHrefUri(string gestionaApiBaseUrl, string href)
+    {
+        return Uri.TryCreate(href, UriKind.Absolute, out var absoluteUri)
+            ? absoluteUri
+            : new Uri(new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute), href);
+    }
+
+    private T? DeserializeResponse<T>(string responseBody, string methodName)
+    {
+        if (string.IsNullOrWhiteSpace(responseBody) ||
+            responseBody is "<empty>" or "<no content>")
+        {
+            return default;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<T>(responseBody);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "({Method}) failed to parse Gestiona response body.", methodName);
+            return default;
+        }
     }
 
     private static string BuildDocumentsAndFoldersRoute(string fileId, string? folderId)

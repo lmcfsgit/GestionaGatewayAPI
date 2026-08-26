@@ -156,6 +156,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
                 folderId,
                 createDocumentRequest,
                 cancellationToken);
+
             createdDocument = createdDocumentResult.Value;
             if (!createdDocumentResult.Success)
             {
@@ -586,6 +587,58 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new GetProcessResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
     }
 
+    private static CreateProcessResult CreateProcessFailure(
+        CreateProcessFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new CreateProcessResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    private static string? ValidateCreateProcessRequest(CreateProcessRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ActivityId))
+        {
+            return "activityId is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ProcedureId))
+        {
+            return "procedureId is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UserId))
+        {
+            return "userId is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.GroupId))
+        {
+            return "groupId is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.FreeSubject))
+        {
+            return "freeSubject is required.";
+        }
+
+        return null;
+    }
+
+    private static string ResolveResourceHref(
+        string gestionaApiBaseUrl,
+        string route,
+        string id)
+    {
+        var normalizedBaseUrl = gestionaApiBaseUrl.EndsWith("/", StringComparison.Ordinal)
+            ? gestionaApiBaseUrl
+            : $"{gestionaApiBaseUrl}/";
+
+        return new Uri(
+            new Uri(normalizedBaseUrl, UriKind.Absolute),
+            $"{route}/{Uri.EscapeDataString(id)}").ToString();
+    }
+
     private static int? GetUpstreamErrorStatusCode(int statusCode)
     {
         return statusCode >= 400
@@ -756,5 +809,120 @@ public sealed class GestionaProcessService : IGestionaProcessService
     private sealed record UploadFileResult(
         CreateDocumentInProcessResult? FailureResult,
         string? SafeFileName,
-        byte[]? Content);
+            byte[]? Content);
+
+    public async Task<CreateProcessResult> CreateProcessAsync(
+        CreateProcessRequest request,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. ActivityId={ActivityId}, ProcedureId={ProcedureId}, UserId={UserId}, GroupId={GroupId}",
+            nameof(CreateProcessAsync),
+            request.ActivityId,
+            request.ProcedureId,
+            request.UserId,
+            request.GroupId);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        var validationMessage = ValidateCreateProcessRequest(request);
+        if (validationMessage is not null)
+        {
+            return CreateProcessFailure(CreateProcessFailureKind.Validation, validationMessage);
+        }
+
+        var createFileResult = await _gestionaApiClient.CreateProcessFileAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            request.ActivityId!,
+            request.ProcedureId!,
+            cancellationToken);
+
+        if (!createFileResult.Success || createFileResult.Value is null)
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Upstream,
+                "Failed to create Gestiona process file.",
+                GetUpstreamErrorStatusCode(createFileResult.StatusCode));
+        }
+
+        var entryDate = createFileResult.Value.EntryDate;
+        if (string.IsNullOrWhiteSpace(entryDate))
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Upstream,
+                "Gestiona create-file response did not include entry_date.",
+                GetUpstreamErrorStatusCode(createFileResult.StatusCode));
+        }
+
+        var fileOpenHref = createFileResult.Value.Links?
+            .FirstOrDefault(link => string.Equals(link.Rel, "file-open", StringComparison.Ordinal))?
+            .Href;
+
+        if (string.IsNullOrWhiteSpace(fileOpenHref))
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Upstream,
+                "Gestiona create-file response did not include a file-open link.",
+                GetUpstreamErrorStatusCode(createFileResult.StatusCode));
+        }
+
+        var openFileRequest = new OpenProcessFileRequest
+        {
+            EntryDate = entryDate,
+            FreeTitle = request.FreeSubject!,
+            UserHref = ResolveResourceHref(gestionaApiBaseUrl, "users", request.UserId!),
+            GroupHref = ResolveResourceHref(gestionaApiBaseUrl, "groups", request.GroupId!)
+        };
+
+        var openFileResult = await _gestionaApiClient.OpenProcessFileAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            fileOpenHref,
+            openFileRequest,
+            cancellationToken);
+
+        if (!openFileResult.Success || openFileResult.Value is null)
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Upstream,
+                "Failed to open Gestiona process file.",
+                GetUpstreamErrorStatusCode(openFileResult.StatusCode));
+        }
+
+        if (string.IsNullOrWhiteSpace(openFileResult.Value.Id) ||
+            string.IsNullOrWhiteSpace(openFileResult.Value.Code))
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Upstream,
+                "Gestiona file-open response did not include id and code.",
+                GetUpstreamErrorStatusCode(openFileResult.StatusCode));
+        }
+
+        return new CreateProcessResult(
+            true,
+            CreateProcessFailureKind.None,
+            null,
+            new CreatedProcess(openFileResult.Value.Id, openFileResult.Value.Code),
+            null);
+    }
 }

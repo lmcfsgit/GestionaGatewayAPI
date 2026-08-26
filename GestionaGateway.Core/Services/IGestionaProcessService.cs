@@ -27,6 +27,11 @@ public interface IGestionaProcessService
         string? accessTokenOverride,
         CancellationToken cancellationToken);
 
+    Task<CreateProcessResult> CreateProcessAsync(
+        CreateProcessRequest request,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Resolves the Gestiona file identifier associated with a process number.
     /// </summary>

@@ -63,6 +63,20 @@ public interface IGestionaApiClient
         string processId,
         CancellationToken cancellationToken);
 
+    Task<GestionaApiCallResult<CreateProcessFileResponse?>> CreateProcessFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string activityId,
+        string procedureId,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<OpenProcessFileResponse?>> OpenProcessFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileOpenHref,
+        OpenProcessFileRequest request,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Creates a document in a Gestiona file or folder.
     /// </summary>

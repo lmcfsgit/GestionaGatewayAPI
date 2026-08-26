@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace GestionaGatewayAPI.Controllers;
 
+/// <summary>
+/// Provides operations for downloading documents from Gestiona.
+/// </summary>
 [ApiController]
 [Route("documents")]
 public sealed class DocumentsController : ControllerBase

@@ -11,6 +11,106 @@ namespace GestionaGatewayAPI.Tests;
 public sealed class GestionaProcessServiceTests
 {
     [Fact]
+    public async Task CreateProcessAsync_CreatesAndOpensGestionaFile()
+    {
+        string? receivedActivityId = null;
+        string? receivedProcedureId = null;
+        string? receivedFileOpenHref = null;
+        OpenProcessFileRequest? receivedOpenRequest = null;
+        var apiClient = new TestGestionaApiClient
+        {
+            CreateProcessFileAsyncHandler = (baseUrl, token, activityId, procedureId, cancellationToken) =>
+            {
+                receivedActivityId = activityId;
+                receivedProcedureId = procedureId;
+                return Task.FromResult(new GestionaApiCallResult<CreateProcessFileResponse?>(
+                    200,
+                    true,
+                    new CreateProcessFileResponse
+                    {
+                        EntryDate = "1787608800",
+                        Links =
+                        [
+                            new GestionaLink("file-open", "files/file-123/open", null)
+                        ]
+                    }));
+            },
+            OpenProcessFileAsyncHandler = (baseUrl, token, fileOpenHref, request, cancellationToken) =>
+            {
+                receivedFileOpenHref = fileOpenHref;
+                receivedOpenRequest = request;
+                return Task.FromResult(new GestionaApiCallResult<OpenProcessFileResponse?>(
+                    200,
+                    true,
+                    new OpenProcessFileResponse
+                    {
+                        Id = "file-123",
+                        Code = "16/2026"
+                    }));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.CreateProcessAsync(
+            new CreateProcessRequest
+            {
+                ActivityId = "activity-1",
+                ProcedureId = "procedure-1",
+                UserId = "user-1",
+                GroupId = "group-1",
+                FreeSubject = "Process subject"
+            },
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("activity-1", receivedActivityId);
+        Assert.Equal("procedure-1", receivedProcedureId);
+        Assert.Equal("files/file-123/open", receivedFileOpenHref);
+        Assert.NotNull(receivedOpenRequest);
+        Assert.Equal("1787608800", receivedOpenRequest.EntryDate);
+        Assert.Equal("Process subject", receivedOpenRequest.FreeTitle);
+        Assert.Equal("https://gestiona.example/rest/users/user-1", receivedOpenRequest.UserHref);
+        Assert.Equal("https://gestiona.example/rest/groups/group-1", receivedOpenRequest.GroupHref);
+        Assert.Equal("file-123", result.Process!.Id);
+        Assert.Equal("16/2026", result.Process.ProcessNumber);
+    }
+
+    [Fact]
+    public async Task CreateProcessAsync_WhenCreateFileResponseHasNoFileOpenLink_ReturnsUpstreamFailure()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            CreateProcessFileAsyncHandler = (baseUrl, token, activityId, procedureId, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<CreateProcessFileResponse?>(
+                    200,
+                    true,
+                    new CreateProcessFileResponse
+                    {
+                        EntryDate = "1787608800",
+                        Links = []
+                    }))
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.CreateProcessAsync(
+            new CreateProcessRequest
+            {
+                ActivityId = "activity-1",
+                ProcedureId = "procedure-1",
+                UserId = "user-1",
+                GroupId = "group-1",
+                FreeSubject = "Process subject"
+            },
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(CreateProcessFailureKind.Upstream, result.FailureKind);
+        Assert.Contains("file-open", result.ErrorMessage);
+    }
+
+    [Fact]
     public async Task GetProcessAsync_ResolvesFileIdFromProcessNumber()
     {
         var resolvedProcessCode = string.Empty;

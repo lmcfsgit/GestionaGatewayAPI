@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace GestionaGatewayAPI.Controllers;
 
+/// <summary>
+/// Provides operations for retrieving third-party records from Gestiona.
+/// </summary>
 [ApiController]
 [Route("thirds")]
 public sealed class ThirdsController : ControllerBase

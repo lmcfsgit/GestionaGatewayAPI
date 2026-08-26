@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace GestionaGatewayAPI.Controllers;
 
+/// <summary>
+/// Provides operations for retrieving processes and managing their documents in Gestiona.
+/// </summary>
 [ApiController]
 [Route("processes")]
 public sealed class ProcessesController : ControllerBase
@@ -30,6 +33,49 @@ public sealed class ProcessesController : ControllerBase
         _configuration = configuration;
         _gestionaProcessService = gestionaProcessService;
         _logger = logger;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<GatewayResponse>> CreateProcess(
+        [FromBody] CreateProcessRequest request,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received process creation request for activity {ActivityId}, procedure {ProcedureId} with operationId {OperationId}",
+            nameof(CreateProcess),
+            request.ActivityId,
+            request.ProcedureId,
+            operationId);
+
+        var result = await _gestionaProcessService.CreateProcessAsync(
+            request,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                CreateProcessFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                CreateProcessFailureKind.Validation => StatusCodes.Status400BadRequest,
+                CreateProcessFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessCreationErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(
+            operationId,
+            true,
+            new ProcessResponse(
+                result.Process!.Id,
+                result.Process.ProcessNumber)));
     }
 
     /// <summary>
@@ -147,6 +193,7 @@ public sealed class ProcessesController : ControllerBase
     /// Gets the third identifiers associated with a Gestiona process.
     /// </summary>
     /// <param name="processId">The Gestiona file identifier whose third parties should be retrieved.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>A payload containing the process identifier and semicolon-separated third identifiers.</returns>
     [HttpGet("{process_id}/thirds")]
@@ -189,6 +236,10 @@ public sealed class ProcessesController : ControllerBase
     /// <summary>
     /// Gets the documents and folders associated with a Gestiona process.
     /// </summary>
+    /// <param name="processId">The Gestiona file identifier whose documents and folders should be retrieved.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing the process documents and folders, or an error payload.</returns>
     [HttpGet("{process_id}/documents")]
     public async Task<ActionResult<GatewayResponse>> GetDocuments(
         [FromRoute(Name = "process_id")] string processId,
@@ -248,6 +299,11 @@ public sealed class ProcessesController : ControllerBase
     /// <summary>
     /// Gets the documents and folders contained in a process document or folder.
     /// </summary>
+    /// <param name="processId">The Gestiona file identifier that contains the document or folder.</param>
+    /// <param name="documentId">The Gestiona document or folder identifier whose contents should be retrieved.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing the nested documents and folders, or an error payload.</returns>
     [HttpGet("{process_id}/documents/{document_id}")]
     public async Task<ActionResult<GatewayResponse>> GetDocumentsInDocument(
         [FromRoute(Name = "process_id")] string processId,
@@ -586,6 +642,7 @@ public sealed class ProcessesController : ControllerBase
     /// </summary>
     /// <param name="request">The upload request containing the document metadata and source information.</param>
     /// <param name="processId">The process identifier or Gestiona file identifier associated with the upload.</param>
+    /// <param name="folderId">The optional Gestiona folder identifier that will receive the document.</param>
     /// <param name="resolveFileIdFromProcessCode">Indicates whether the process identifier must first be resolved to a Gestiona file identifier.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>
@@ -738,6 +795,23 @@ public sealed class ProcessesController : ControllerBase
                     message)));
     }
 
+    private ActionResult<GatewayResponse> CreateProcessCreationErrorResponse(
+        string? operationId,
+        int statusCode,
+        CreateProcessFailureKind failureKind,
+        string message)
+    {
+        return StatusCode(
+            statusCode,
+            new GatewayResponse(
+                operationId,
+                false,
+                new ProcessError(
+                    statusCode,
+                    ReasonPhrases.GetReasonPhrase(statusCode),
+                    failureKind.ToString(),
+                    message)));
+    }
 
     /// <summary>
     /// Logs a sanitized representation of the upload request without writing raw document content to the logs.
