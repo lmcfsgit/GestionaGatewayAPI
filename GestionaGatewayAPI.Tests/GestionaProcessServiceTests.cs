@@ -15,6 +15,7 @@ public sealed class GestionaProcessServiceTests
     {
         string? receivedActivityId = null;
         string? receivedProcedureId = null;
+        string? receivedSelectableTitlesProcessId = null;
         string? receivedFileOpenHref = null;
         OpenProcessFileRequest? receivedOpenRequest = null;
         var apiClient = new TestGestionaApiClient
@@ -33,6 +34,18 @@ public sealed class GestionaProcessServiceTests
                         [
                             new GestionaLink("file-open", "files/file-123/open", null)
                         ]
+                    }));
+            },
+            GetSelectableTitlesAsyncHandler = (baseUrl, token, processId, cancellationToken) =>
+            {
+                receivedSelectableTitlesProcessId = processId;
+                return Task.FromResult(new GestionaApiCallResult<SelectableTitlesResponse?>(
+                    200,
+                    true,
+                    new SelectableTitlesResponse
+                    {
+                        Required = true,
+                        SelectableTitles = ["Teste 1", "Teste 2"]
                     }));
             },
             OpenProcessFileAsyncHandler = (baseUrl, token, fileOpenHref, request, cancellationToken) =>
@@ -66,10 +79,12 @@ public sealed class GestionaProcessServiceTests
         Assert.True(result.Success);
         Assert.Equal("activity-1", receivedActivityId);
         Assert.Equal("procedure-1", receivedProcedureId);
+        Assert.Equal("file-123", receivedSelectableTitlesProcessId);
         Assert.Equal("files/file-123/open", receivedFileOpenHref);
         Assert.NotNull(receivedOpenRequest);
         Assert.Equal("1787608800", receivedOpenRequest.EntryDate);
         Assert.Equal("Process subject", receivedOpenRequest.FreeTitle);
+        Assert.Equal("Teste 1", receivedOpenRequest.SelectableTitle);
         Assert.Equal("https://gestiona.example/rest/users/user-1", receivedOpenRequest.UserHref);
         Assert.Equal("https://gestiona.example/rest/groups/group-1", receivedOpenRequest.GroupHref);
         Assert.Equal("file-123", result.Process!.Id);
@@ -337,6 +352,67 @@ public sealed class GestionaProcessServiceTests
 
         Assert.True(result.Success);
         Assert.Equal("folder-456", requestedDocumentId);
+    }
+
+    [Fact]
+    public async Task GetProcessAssigneeUserAsync_ReturnsFirstUser()
+    {
+        GetProcessAssigneeUserRequest? receivedRequest = null;
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessAssigneeUserAsyncHandler = (baseUrl, token, request, cancellationToken) =>
+            {
+                receivedRequest = request;
+                return Task.FromResult(new GestionaApiCallResult<ProcessAssigneeUser?>(
+                    200,
+                    true,
+                    new ProcessAssigneeUser(
+                        "8be7a78b-787a-4061-a11c-1bfcdf2d627a",
+                        "081847637",
+                        "Luis Silva")));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessAssigneeUserAsync(
+            new GetProcessAssigneeUserRequest("081847637"),
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("081847637", receivedRequest!.Username);
+        Assert.Equal("8be7a78b-787a-4061-a11c-1bfcdf2d627a", result.User!.Id);
+        Assert.Equal("081847637", result.User.Username);
+        Assert.Equal("Luis Silva", result.User.Name);
+    }
+
+    [Fact]
+    public async Task GetProcessAssigneeGroupsAsync_ReturnsGroups()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessAssigneeGroupsAsyncHandler = (baseUrl, token, cancellationToken) =>
+            {
+                IReadOnlyList<ProcessAssigneeGroup> groups =
+                [
+                    new("43f83662-bb73-4c98-915a-de90219036f6", "100. Exemplo")
+                ];
+                return Task.FromResult(new GestionaApiCallResult<IReadOnlyList<ProcessAssigneeGroup>>(
+                    200,
+                    true,
+                    groups));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessAssigneeGroupsAsync(
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        var group = Assert.Single(result.Groups!);
+        Assert.Equal("43f83662-bb73-4c98-915a-de90219036f6", group.Id);
+        Assert.Equal("100. Exemplo", group.Name);
     }
 
     private static GestionaProcessService CreateService(TestGestionaApiClient apiClient)

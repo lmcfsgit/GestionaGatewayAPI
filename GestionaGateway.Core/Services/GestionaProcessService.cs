@@ -555,6 +555,125 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    public async Task<GetProcessAssigneeUserResult> GetProcessAssigneeUserAsync(
+        GetProcessAssigneeUserRequest request,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. Username={Username}",
+            nameof(GetProcessAssigneeUserAsync),
+            request.Username);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return AssigneeUserFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return AssigneeUserFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Username))
+        {
+            return AssigneeUserFailure(
+                GetProcessFailureKind.Validation,
+                "username is required.");
+        }
+
+        var userResult = await _gestionaApiClient.GetProcessAssigneeUserAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            request,
+            cancellationToken);
+
+        if (!userResult.Success)
+        {
+            var failureKind = userResult.StatusCode == 404
+                ? GetProcessFailureKind.NotFound
+                : GetProcessFailureKind.Upstream;
+            return AssigneeUserFailure(
+                failureKind,
+                "Failed to get assignee user from Gestiona.",
+                GetUpstreamErrorStatusCode(userResult.StatusCode));
+        }
+
+        if (userResult.Value is null)
+        {
+            return AssigneeUserFailure(
+                GetProcessFailureKind.NotFound,
+                $"No Gestiona assignee user was found for username: {request.Username}.");
+        }
+
+        return new GetProcessAssigneeUserResult(
+            true,
+            GetProcessFailureKind.None,
+            null,
+            userResult.Value,
+            null);
+    }
+
+    public async Task<GetProcessAssigneeGroupsResult> GetProcessAssigneeGroupsAsync(
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("({Method}) started.", nameof(GetProcessAssigneeGroupsAsync));
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return AssigneeGroupsFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return AssigneeGroupsFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        var groupsResult = await _gestionaApiClient.GetProcessAssigneeGroupsAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            cancellationToken);
+
+        if (!groupsResult.Success)
+        {
+            var failureKind = groupsResult.StatusCode == 404
+                ? GetProcessFailureKind.NotFound
+                : GetProcessFailureKind.Upstream;
+            return AssigneeGroupsFailure(
+                failureKind,
+                "Failed to get assignee groups from Gestiona.",
+                GetUpstreamErrorStatusCode(groupsResult.StatusCode));
+        }
+
+        return new GetProcessAssigneeGroupsResult(
+            true,
+            GetProcessFailureKind.None,
+            null,
+            groupsResult.Value ?? [],
+            null);
+    }
+
     private static CreateDocumentInProcessResult Failure(
         CreateDocumentInProcessFailureKind failureKind,
         string errorMessage,
@@ -585,6 +704,22 @@ public sealed class GestionaProcessService : IGestionaProcessService
         int? upstreamStatusCode = null)
     {
         return new GetProcessResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
+    }
+
+    private static GetProcessAssigneeUserResult AssigneeUserFailure(
+        GetProcessFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetProcessAssigneeUserResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    private static GetProcessAssigneeGroupsResult AssigneeGroupsFailure(
+        GetProcessFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetProcessAssigneeGroupsResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
     private static CreateProcessResult CreateProcessFailure(
@@ -637,6 +772,34 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new Uri(
             new Uri(normalizedBaseUrl, UriKind.Absolute),
             $"{route}/{Uri.EscapeDataString(id)}").ToString();
+    }
+
+    private static string? ResolveProcessIdFromFileOpenHref(string fileOpenHref)
+    {
+        var path = Uri.TryCreate(fileOpenHref, UriKind.Absolute, out var absoluteUri)
+            ? absoluteUri.AbsolutePath
+            : fileOpenHref;
+
+        var segments = path.Split(
+            '/',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        var openSegmentIndex = Array.FindLastIndex(
+            segments,
+            segment => string.Equals(segment, "open", StringComparison.OrdinalIgnoreCase));
+
+        if (openSegmentIndex > 0)
+        {
+            return Uri.UnescapeDataString(segments[openSegmentIndex - 1]);
+        }
+
+        var filesSegmentIndex = Array.FindLastIndex(
+            segments,
+            segment => string.Equals(segment, "files", StringComparison.OrdinalIgnoreCase));
+
+        return filesSegmentIndex >= 0 && filesSegmentIndex + 1 < segments.Length
+            ? Uri.UnescapeDataString(segments[filesSegmentIndex + 1])
+            : null;
     }
 
     private static int? GetUpstreamErrorStatusCode(int statusCode)
@@ -886,10 +1049,37 @@ public sealed class GestionaProcessService : IGestionaProcessService
                 GetUpstreamErrorStatusCode(createFileResult.StatusCode));
         }
 
+        var createdProcessId = ResolveProcessIdFromFileOpenHref(fileOpenHref);
+        if (string.IsNullOrWhiteSpace(createdProcessId))
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Upstream,
+                "Gestiona create-file response file-open link did not include a process id.",
+                GetUpstreamErrorStatusCode(createFileResult.StatusCode));
+        }
+
+        var selectableTitlesResult = await _gestionaApiClient.GetSelectableTitlesAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            createdProcessId,
+            cancellationToken);
+
+        if (!selectableTitlesResult.Success)
+        {
+            return CreateProcessFailure(
+                CreateProcessFailureKind.Upstream,
+                "Failed to get Gestiona selectable titles.",
+                GetUpstreamErrorStatusCode(selectableTitlesResult.StatusCode));
+        }
+
+        var selectableTitle = selectableTitlesResult.Value?.SelectableTitles?
+            .FirstOrDefault(title => !string.IsNullOrWhiteSpace(title));
+
         var openFileRequest = new OpenProcessFileRequest
         {
             EntryDate = entryDate,
             FreeTitle = request.FreeSubject!,
+            SelectableTitle = selectableTitle,
             UserHref = ResolveResourceHref(gestionaApiBaseUrl, "users", request.UserId!),
             GroupHref = ResolveResourceHref(gestionaApiBaseUrl, "groups", request.GroupId!)
         };

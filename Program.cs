@@ -54,6 +54,7 @@ public sealed class Program
         });
         builder.Services.AddHttpClient();
         builder.Services.AddScoped<IGestionaApiClient, GestionaApiClient>();
+        builder.Services.AddScoped<IGestionaActivityService, GestionaActivityService>();
         builder.Services.AddScoped<IGestionaProcessService, GestionaProcessService>();
         builder.Services.AddScoped<IGestionaDocumentService, GestionaDocumentService>();
         builder.Services.AddScoped<IGestionaThirdService, GestionaThirdService>();

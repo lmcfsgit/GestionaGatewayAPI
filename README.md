@@ -81,4 +81,18 @@
 
 ### Improvements
 
-- Added support for swagger Controller Xml Comments
+<center>_Version 1.6.0_</center>
+
+### Features
+
+- New endpoints:
+  - GET .../processes/assignees/users: get assignable user
+  - GET .../processes/assignees/groups: get assignables groups
+  - GET .../activities: gets all activities
+  - GET .../activities/{activity_id}/procedures: gets all procedures from activity
+
+### Bug Fixs
+
+### Improvements
+
+If the created process has selectables titles, select the first and use it in the open file endpoint request on the selectable_title property

@@ -50,9 +50,20 @@ public sealed record OpenProcessFileRequest
 
     public string FreeTitle { get; init; } = null!;
 
+    public string? SelectableTitle { get; init; }
+
     public string UserHref { get; init; } = null!;
 
     public string GroupHref { get; init; } = null!;
+}
+
+public sealed record SelectableTitlesResponse
+{
+    [JsonPropertyName("required")]
+    public bool Required { get; init; }
+
+    [JsonPropertyName("selectable_titles")]
+    public IReadOnlyList<string>? SelectableTitles { get; init; }
 }
 
 public sealed record OpenProcessFileResponse

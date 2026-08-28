@@ -70,11 +70,28 @@ public interface IGestionaApiClient
         string procedureId,
         CancellationToken cancellationToken);
 
+    Task<GestionaApiCallResult<SelectableTitlesResponse?>> GetSelectableTitlesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        CancellationToken cancellationToken);
+
     Task<GestionaApiCallResult<OpenProcessFileResponse?>> OpenProcessFileAsync(
         string gestionaApiBaseUrl,
         string accessToken,
         string fileOpenHref,
         OpenProcessFileRequest request,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<IReadOnlyList<Activity>>> GetActivitiesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<IReadOnlyList<ExternalProcedure>>> GetExternalProceduresAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string activityId,
         CancellationToken cancellationToken);
 
     /// <summary>
@@ -167,6 +184,17 @@ public interface IGestionaApiClient
         string accessToken,
         string processId,
         string? documentId,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<ProcessAssigneeUser?>> GetProcessAssigneeUserAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        GetProcessAssigneeUserRequest request,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<IReadOnlyList<ProcessAssigneeGroup>>> GetProcessAssigneeGroupsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
         CancellationToken cancellationToken);
 
     /// <summary>

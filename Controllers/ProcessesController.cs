@@ -380,6 +380,110 @@ public sealed class ProcessesController : ControllerBase
         return Ok(new GatewayResponse(operationId, true, result.Documents ?? []));
     }
 
+    [HttpGet("assignees/users")]
+    public async Task<ActionResult<GatewayResponse>> GetAssigneeUser(
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        if (!IsJsonContentType(Request.ContentType))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status415UnsupportedMediaType,
+                GetProcessFailureKind.Validation,
+                "Content-Type must be application/json.");
+        }
+
+        GetProcessAssigneeUserRequest? request;
+        try
+        {
+            request = await JsonSerializer.DeserializeAsync<GetProcessAssigneeUserRequest>(
+                Request.Body,
+                cancellationToken: cancellationToken);
+        }
+        catch (JsonException)
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "Request body must be valid JSON.");
+        }
+
+        if (request is null)
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "Request body is required.");
+        }
+
+        _logger.LogInformation(
+            "{Method} received assignee user request for username {Username} with operationId {OperationId}",
+            nameof(GetAssigneeUser),
+            request.Username,
+            operationId);
+
+        var result = await _gestionaProcessService.GetProcessAssigneeUserAsync(
+            request,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.User!));
+    }
+
+    [HttpGet("assignees/groups")]
+    public async Task<ActionResult<GatewayResponse>> GetAssigneeGroups(
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received assignee groups request with operationId {OperationId}",
+            nameof(GetAssigneeGroups),
+            operationId);
+
+        var result = await _gestionaProcessService.GetProcessAssigneeGroupsAsync(
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.Groups ?? []));
+    }
+
     private async Task<ActionResult<GatewayResponse>> GetThirdsCore(
         string processId,
         bool resolveFileIdFromProcessCode,
@@ -887,6 +991,16 @@ public sealed class ProcessesController : ControllerBase
         return accessToken.Length <= 8
             ? "********"
             : $"{accessToken[..4]}...{accessToken[^4..]}";
+    }
+
+    private static bool IsJsonContentType(string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return false;
+        }
+
+        return contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase);
     }
 
 }
