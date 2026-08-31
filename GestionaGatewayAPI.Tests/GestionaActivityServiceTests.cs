@@ -125,11 +125,13 @@ public sealed class GestionaActivityServiceTests
             {
                 Assert.Equal("procedure-1", procedure.Id);
                 Assert.Equal("Procedimento Generico", procedure.Name);
+                Assert.Equal("activity-123", procedure.ActivityId);
             },
             procedure =>
             {
                 Assert.Equal("procedure-2", procedure.Id);
                 Assert.Equal("Licenciamento", procedure.Name);
+                Assert.Equal("activity-123", procedure.ActivityId);
             });
     }
 

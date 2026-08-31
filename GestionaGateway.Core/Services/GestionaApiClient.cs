@@ -356,6 +356,15 @@ public sealed class GestionaApiClient : IGestionaApiClient
 
     }
 
+    /// <summary>
+    /// Creates a Gestiona process file for the specified catalog activity and external procedure.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="activityId">The Gestiona catalog activity identifier.</param>
+    /// <param name="procedureId">The Gestiona external procedure identifier.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the create-file response when available.</returns>
     public async Task<GestionaApiCallResult<CreateProcessFileResponse?>> CreateProcessFileAsync(
         string gestionaApiBaseUrl,
         string accessToken,
@@ -405,6 +414,14 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return new GestionaApiCallResult<CreateProcessFileResponse?>((int)response.StatusCode, true, responseModel);
     }
 
+    /// <summary>
+    /// Gets the selectable titles available for opening a Gestiona process file.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="processId">The Gestiona process file identifier.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the selectable-title response when the request succeeds.</returns>
     public async Task<GestionaApiCallResult<SelectableTitlesResponse?>> GetSelectableTitlesAsync(
         string gestionaApiBaseUrl,
         string accessToken,
@@ -451,6 +468,15 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return new GestionaApiCallResult<SelectableTitlesResponse?>((int)response.StatusCode, true, responseModel);
     }
 
+    /// <summary>
+    /// Opens a previously created Gestiona process file using the file-open link returned by Gestiona.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API, used when the file-open link is relative.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="fileOpenHref">The absolute or relative file-open link returned by the create-file response.</param>
+    /// <param name="request">The file-opening payload containing entry date, title, optional selectable title, assignee user, and group.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the opened process file response when the request succeeds.</returns>
     public async Task<GestionaApiCallResult<OpenProcessFileResponse?>> OpenProcessFileAsync(
         string gestionaApiBaseUrl,
         string accessToken,
@@ -534,6 +560,13 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return new GestionaApiCallResult<OpenProcessFileResponse?>((int)response.StatusCode, true, responseModel);
     }
 
+    /// <summary>
+    /// Gets the activities available in the Gestiona catalog.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the available activities.</returns>
     public async Task<GestionaApiCallResult<IReadOnlyList<Activity>>> GetActivitiesAsync(
         string gestionaApiBaseUrl,
         string accessToken,
@@ -580,6 +613,14 @@ public sealed class GestionaApiClient : IGestionaApiClient
             responseModel?.Content ?? []);
     }
 
+    /// <summary>
+    /// Gets the external procedures available for the specified Gestiona catalog activity.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="activityId">The Gestiona catalog activity identifier.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the available external procedures.</returns>
     public async Task<GestionaApiCallResult<IReadOnlyList<ExternalProcedure>>> GetExternalProceduresAsync(
         string gestionaApiBaseUrl,
         string accessToken,
@@ -635,6 +676,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
     /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
     /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
     /// <param name="fileId">The Gestiona file identifier that will receive the new document.</param>
+    /// <param name="folderId">The optional Gestiona folder identifier that will receive the new document.</param>
     /// <param name="request">The document creation payload, including metadata and the uploaded content link.</param>
     /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
     /// <returns>The API call result containing the created document payload when available.</returns>
@@ -873,6 +915,12 @@ public sealed class GestionaApiClient : IGestionaApiClient
     /// <summary>
     /// Gets the documents and folders associated with a Gestiona file.
     /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="processId">The Gestiona file identifier whose documents and folders should be retrieved.</param>
+    /// <param name="documentId">The optional document or folder identifier whose child items should be retrieved.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the mapped document and folder items.</returns>
     public async Task<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>> GetProcessDocumentsAsync(
         string gestionaApiBaseUrl,
         string accessToken,
@@ -939,6 +987,14 @@ public sealed class GestionaApiClient : IGestionaApiClient
         }
     }
 
+    /// <summary>
+    /// Gets the first Gestiona assignee user matching the provided username filter.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="request">The assignee user filter payload.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the first matching assignee user when available.</returns>
     public async Task<GestionaApiCallResult<ProcessAssigneeUser?>> GetProcessAssigneeUserAsync(
         string gestionaApiBaseUrl,
         string accessToken,
@@ -959,6 +1015,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
             "({Method}) getting Gestiona assignee user via {RequestUri}",
             nameof(GetProcessAssigneeUserAsync),
             new Uri(httpClient.BaseAddress, httpRequest.RequestUri!));
+
         _logger.LogDebug(
             "({Method}) Gestiona request body:{NewLine}{RequestBody}",
             nameof(GetProcessAssigneeUserAsync),
@@ -995,6 +1052,13 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return new GestionaApiCallResult<ProcessAssigneeUser?>((int)response.StatusCode, false, null);
     }
 
+    /// <summary>
+    /// Gets the Gestiona assignee groups available for process assignment.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the available assignee groups.</returns>
     public async Task<GestionaApiCallResult<IReadOnlyList<ProcessAssigneeGroup>>> GetProcessAssigneeGroupsAsync(
         string gestionaApiBaseUrl,
         string accessToken,
@@ -1451,6 +1515,12 @@ public sealed class GestionaApiClient : IGestionaApiClient
             : $"{gestionaApiBaseUrl}/";
     }
 
+    /// <summary>
+    /// Resolves an absolute or relative Gestiona href into an absolute URI.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API, used when <paramref name="href"/> is relative.</param>
+    /// <param name="href">The absolute or relative href to resolve.</param>
+    /// <returns>The resolved absolute URI.</returns>
     private static Uri ResolveHrefUri(string gestionaApiBaseUrl, string href)
     {
         return Uri.TryCreate(href, UriKind.Absolute, out var absoluteUri)
@@ -1458,6 +1528,13 @@ public sealed class GestionaApiClient : IGestionaApiClient
             : new Uri(new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute), href);
     }
 
+    /// <summary>
+    /// Deserializes a non-empty JSON response body into the requested model type.
+    /// </summary>
+    /// <typeparam name="T">The response model type.</typeparam>
+    /// <param name="responseBody">The raw response body to deserialize.</param>
+    /// <param name="methodName">The calling method name used in warning logs.</param>
+    /// <returns>The deserialized response model, or the default value when the body is empty or invalid.</returns>
     private T? DeserializeResponse<T>(string responseBody, string methodName)
     {
         if (string.IsNullOrWhiteSpace(responseBody) ||
@@ -1477,6 +1554,12 @@ public sealed class GestionaApiClient : IGestionaApiClient
         }
     }
 
+    /// <summary>
+    /// Builds the Gestiona documents-and-folders route for a file or child folder/document.
+    /// </summary>
+    /// <param name="fileId">The Gestiona file identifier.</param>
+    /// <param name="folderId">The optional folder or document identifier to append to the route.</param>
+    /// <returns>The relative documents-and-folders route.</returns>
     private static string BuildDocumentsAndFoldersRoute(string fileId, string? folderId)
     {
         var route = $"{FilesRoute}/{Uri.EscapeDataString(fileId)}/{DocumentsAndFoldersRoute}";
@@ -1485,6 +1568,11 @@ public sealed class GestionaApiClient : IGestionaApiClient
             : $"{route}/{Uri.EscapeDataString(folderId)}";
     }
 
+    /// <summary>
+    /// Extracts third identifiers from the links returned by the Gestiona process third-party response.
+    /// </summary>
+    /// <param name="thirdPartyLinks">The upstream third-party links response.</param>
+    /// <returns>The third identifiers resolved from links whose relation is <c>third</c>.</returns>
     private static IReadOnlyList<string> ExtractThirdIds(ProcessThirdPartyLinksResponse? thirdPartyLinks)
     {
         if (thirdPartyLinks?.Content is null)
@@ -1508,6 +1596,11 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return thirdIds;
     }
 
+    /// <summary>
+    /// Gets the final path segment from an absolute or relative href.
+    /// </summary>
+    /// <param name="href">The href whose final path segment should be returned.</param>
+    /// <returns>The final href segment, or <see langword="null"/> when the href is empty.</returns>
     private static string? GetLastHrefSegment(string? href)
     {
         if (string.IsNullOrWhiteSpace(href))
@@ -1522,6 +1615,11 @@ public sealed class GestionaApiClient : IGestionaApiClient
             : trimmedHref[(lastSlashIndex + 1)..];
     }
 
+    /// <summary>
+    /// Resolves a third identifier when the third filter response contains exactly one item.
+    /// </summary>
+    /// <param name="thirdFilter">The upstream third filter response.</param>
+    /// <returns>The single third identifier, or <see langword="null"/> when the response does not contain exactly one item.</returns>
     private static string? ResolveSingleThirdId(ThirdFilterResponse? thirdFilter)
     {
         if (thirdFilter?.Content is null ||

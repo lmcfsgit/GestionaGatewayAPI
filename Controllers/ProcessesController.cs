@@ -380,6 +380,12 @@ public sealed class ProcessesController : ControllerBase
         return Ok(new GatewayResponse(operationId, true, result.Documents ?? []));
     }
 
+    /// <summary>
+    /// Gets the first Gestiona assignee user matching the username provided in the JSON request body.
+    /// </summary>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing the assignee user on success, or an error payload when the lookup fails.</returns>
     [HttpGet("assignees/users")]
     public async Task<ActionResult<GatewayResponse>> GetAssigneeUser(
         [FromQuery(Name = "operationId")] string? operationId,

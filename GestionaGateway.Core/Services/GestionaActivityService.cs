@@ -132,7 +132,7 @@ public sealed class GestionaActivityService : IGestionaActivityService
         }
 
         var procedures = proceduresResult.Value?
-            .Select(procedure => new Procedure(procedure.Id, procedure.Title))
+            .Select(procedure => new Procedure(procedure.Id, procedure.Title, activityId))
             .ToArray() ?? [];
 
         return new GetProceduresResult(

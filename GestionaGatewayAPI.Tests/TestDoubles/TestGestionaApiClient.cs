@@ -187,10 +187,10 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
     }
 
     public Task<GestionaApiCallResult<Third?>> GetThirdAsync(
-        string gestionaApiBaseUrl,
-        string accessToken,
-        string thirdId,
-        CancellationToken cancellationToken)
+    string gestionaApiBaseUrl,
+    string accessToken,
+    string thirdId,
+    CancellationToken cancellationToken)
     {
         return Invoke<GestionaApiCallResult<Third?>>(GetThirdAsyncHandler, gestionaApiBaseUrl, accessToken, thirdId, cancellationToken);
     }

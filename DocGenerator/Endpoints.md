@@ -233,7 +233,8 @@ Used for each item in `GatewayResponse.result` returned by `GET /activities/{act
 ```json
 {
   "id": "string | null",
-  "name": "string | null"
+  "name": "string | null",
+  "activityId": "string | null"
 }
 ```
 
@@ -241,6 +242,8 @@ Used for each item in `GatewayResponse.result` returned by `GET /activities/{act
 
 - `name`
   Mapped from the upstream external procedure `title` field.
+- `activityId`
+  Copied from the `activity_id` route parameter.
 
 ### ActivityError
 
@@ -1338,7 +1341,8 @@ Gets the external procedures available for a Gestiona activity.
   "result": [
     {
       "id": "external-procedure-id",
-      "name": "Procedimento exemplo"
+      "name": "Procedimento exemplo",
+      "activityId": "82722c9b-cecc-4299-8a7b-ce5abeb8170b"
     }
   ]
 }

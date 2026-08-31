@@ -96,3 +96,13 @@
 ### Improvements
 
 If the created process has selectables titles, select the first and use it in the open file endpoint request on the selectable_title property
+
+<center>_Version 1.6.1_</center>
+
+### Features
+
+### Bug Fixs
+
+### Improvements
+
+Added the activityId to each procedure object in the result array of the list activity procedures

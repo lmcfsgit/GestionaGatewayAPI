@@ -592,7 +592,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
                 "username is required.");
         }
 
-        var userResult = await _gestionaApiClient.GetProcessAssigneeUserAsync(
+        GestionaApiCallResult<ProcessAssigneeUser?> userResult = await _gestionaApiClient.GetProcessAssigneeUserAsync(
             gestionaApiBaseUrl,
             accessToken,
             request,

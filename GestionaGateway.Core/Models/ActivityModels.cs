@@ -11,7 +11,8 @@ public sealed record ActivitiesResponse(
 
 public sealed record Procedure(
     [property: JsonPropertyName("id")] string? Id,
-    [property: JsonPropertyName("name")] string? Name);
+    [property: JsonPropertyName("name")] string? Name,
+    [property: JsonPropertyName("activityId")] string? ActivityId);
 
 public sealed record ExternalProcedure(
     [property: JsonPropertyName("id")] string? Id,
