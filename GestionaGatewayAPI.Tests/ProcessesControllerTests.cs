@@ -61,6 +61,7 @@ public sealed class ProcessesControllerTests
         controller.Request.ContentType = "application/vnd.gestiona.filter.assignees+json";
 
         var response = await controller.GetAssigneeUser(
+            username: null,
             "operation-1",
             CancellationToken.None);
 
@@ -74,6 +75,44 @@ public sealed class ProcessesControllerTests
         Assert.Equal("Unsupported Media Type", error.Name);
         Assert.Equal(GetProcessFailureKind.Validation.ToString(), error.Kind);
         Assert.Equal("Content-Type must be application/json.", error.Message);
+    }
+
+    [Fact]
+    public async Task GetAssigneeUser_WhenUsernameQueryParameterIsProvided_UsesQueryParameter()
+    {
+        GetProcessAssigneeUserRequest? receivedRequest = null;
+        var controller = CreateController(new TestGestionaProcessService
+        {
+            GetProcessAssigneeUserAsyncHandler = (request, accessTokenOverride, cancellationToken) =>
+            {
+                receivedRequest = request;
+                return Task.FromResult(new GetProcessAssigneeUserResult(
+                    true,
+                    GetProcessFailureKind.None,
+                    null,
+                    new ProcessAssigneeUser("user-1", "081847637", "Luis Silva"),
+                    null));
+            }
+        });
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var response = await controller.GetAssigneeUser(
+            "081847637",
+            "operation-1",
+            CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(response.Result);
+        var gatewayResponse = Assert.IsType<GatewayResponse>(okResult.Value);
+        Assert.Equal("operation-1", gatewayResponse.OperationId);
+        Assert.True(gatewayResponse.Success);
+        Assert.Equal("081847637", receivedRequest!.Username);
+        var user = Assert.IsType<ProcessAssigneeUser>(gatewayResponse.Result);
+        Assert.Equal("user-1", user.Id);
+        Assert.Equal("081847637", user.Username);
+        Assert.Equal("Luis Silva", user.Name);
     }
 
     private static ProcessesController CreateController()
@@ -92,6 +131,7 @@ public sealed class ProcessesControllerTests
     private sealed class TestGestionaProcessService : IGestionaProcessService
     {
         public Func<string?, CancellationToken, Task<GetProcessAssigneeGroupsResult>>? GetProcessAssigneeGroupsAsyncHandler { get; init; }
+        public Func<GetProcessAssigneeUserRequest, string?, CancellationToken, Task<GetProcessAssigneeUserResult>>? GetProcessAssigneeUserAsyncHandler { get; init; }
 
         public Task<CreateDocumentInProcessResult> CreateDocumentInProcessAsync(
             UploadDocumentRequest request,
@@ -144,7 +184,12 @@ public sealed class ProcessesControllerTests
             string? accessTokenOverride,
             CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            if (GetProcessAssigneeUserAsyncHandler is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            return GetProcessAssigneeUserAsyncHandler(request, accessTokenOverride, cancellationToken);
         }
 
         public Task<GetProcessAssigneeGroupsResult> GetProcessAssigneeGroupsAsync(

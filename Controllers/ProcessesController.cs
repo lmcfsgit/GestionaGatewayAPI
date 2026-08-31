@@ -25,6 +25,12 @@ public sealed class ProcessesController : ControllerBase
     private readonly IGestionaProcessService _gestionaProcessService;
     private readonly ILogger<ProcessesController> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ProcessesController"/> class.
+    /// </summary>
+    /// <param name="configuration">The application configuration used to resolve document storage settings.</param>
+    /// <param name="gestionaProcessService">The service used to execute process workflows.</param>
+    /// <param name="logger">The logger used for request tracing and diagnostics.</param>
     public ProcessesController(
         IConfiguration configuration,
         IGestionaProcessService gestionaProcessService,
@@ -35,6 +41,13 @@ public sealed class ProcessesController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Creates a new Gestiona process from the provided activity, procedure, assignee user, group, and subject.
+    /// </summary>
+    /// <param name="request">The process creation request body.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing the created process on success, or an error payload when creation fails.</returns>
     [HttpPost]
     public async Task<ActionResult<GatewayResponse>> CreateProcess(
         [FromBody] CreateProcessRequest request,
@@ -381,48 +394,62 @@ public sealed class ProcessesController : ControllerBase
     }
 
     /// <summary>
-    /// Gets the first Gestiona assignee user matching the username provided in the JSON request body.
+    /// Gets the first Gestiona assignee user matching the username provided in the query string or JSON request body.
     /// </summary>
+    /// <param name="username">An optional username query parameter used instead of the JSON request body when present.</param>
     /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>A response envelope containing the assignee user on success, or an error payload when the lookup fails.</returns>
     [HttpGet("assignees/users")]
     public async Task<ActionResult<GatewayResponse>> GetAssigneeUser(
+        [FromQuery(Name = "username")] string? username,
         [FromQuery(Name = "operationId")] string? operationId,
         CancellationToken cancellationToken)
     {
-        if (!IsJsonContentType(Request.ContentType))
-        {
-            return CreateProcessErrorResponse(
-                operationId,
-                StatusCodes.Status415UnsupportedMediaType,
-                GetProcessFailureKind.Validation,
-                "Content-Type must be application/json.");
-        }
-
         GetProcessAssigneeUserRequest? request;
-        try
+        if (!string.IsNullOrWhiteSpace(username))
         {
-            request = await JsonSerializer.DeserializeAsync<GetProcessAssigneeUserRequest>(
-                Request.Body,
-                cancellationToken: cancellationToken);
+            _logger.LogInformation(
+                "{Method} received assignee user request for username {Username} with operationId {OperationId} from query string",
+                nameof(GetAssigneeUser),
+                username,
+                operationId);
+            request = new GetProcessAssigneeUserRequest(username);
         }
-        catch (JsonException)
+        else
         {
-            return CreateProcessErrorResponse(
-                operationId,
-                StatusCodes.Status400BadRequest,
-                GetProcessFailureKind.Validation,
-                "Request body must be valid JSON.");
-        }
+            if (!IsJsonContentType(Request.ContentType))
+            {
+                return CreateProcessErrorResponse(
+                    operationId,
+                    StatusCodes.Status415UnsupportedMediaType,
+                    GetProcessFailureKind.Validation,
+                    "Content-Type must be application/json.");
+            }
 
-        if (request is null)
-        {
-            return CreateProcessErrorResponse(
-                operationId,
-                StatusCodes.Status400BadRequest,
-                GetProcessFailureKind.Validation,
-                "Request body is required.");
+            try
+            {
+                request = await JsonSerializer.DeserializeAsync<GetProcessAssigneeUserRequest>(
+                    Request.Body,
+                    cancellationToken: cancellationToken);
+            }
+            catch (JsonException)
+            {
+                return CreateProcessErrorResponse(
+                    operationId,
+                    StatusCodes.Status400BadRequest,
+                    GetProcessFailureKind.Validation,
+                    "Request body must be valid JSON.");
+            }
+
+            if (request is null)
+            {
+                return CreateProcessErrorResponse(
+                    operationId,
+                    StatusCodes.Status400BadRequest,
+                    GetProcessFailureKind.Validation,
+                    "Request body is required.");
+            }
         }
 
         _logger.LogInformation(
@@ -456,6 +483,12 @@ public sealed class ProcessesController : ControllerBase
         return Ok(new GatewayResponse(operationId, true, result.User!));
     }
 
+    /// <summary>
+    /// Gets the Gestiona assignee groups available for process assignment.
+    /// </summary>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing the assignee groups on success, or an error payload when the lookup fails.</returns>
     [HttpGet("assignees/groups")]
     public async Task<ActionResult<GatewayResponse>> GetAssigneeGroups(
         [FromQuery(Name = "operationId")] string? operationId,
@@ -490,6 +523,14 @@ public sealed class ProcessesController : ControllerBase
         return Ok(new GatewayResponse(operationId, true, result.Groups ?? []));
     }
 
+    /// <summary>
+    /// Executes the shared process-third lookup workflow for direct process ids and process-number resolution.
+    /// </summary>
+    /// <param name="processId">The process number or Gestiona file identifier to inspect.</param>
+    /// <param name="resolveFileIdFromProcessCode">Indicates whether <paramref name="processId"/> must first be resolved from a process number.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing process third identifiers, or an error payload when the lookup fails.</returns>
     private async Task<ActionResult<GatewayResponse>> GetThirdsCore(
         string processId,
         bool resolveFileIdFromProcessCode,
@@ -861,6 +902,14 @@ public sealed class ProcessesController : ControllerBase
                     message)));
     }
 
+    /// <summary>
+    /// Creates a standardized process document-listing error response payload.
+    /// </summary>
+    /// <param name="operationId">The optional operation identifier associated with the request.</param>
+    /// <param name="statusCode">The HTTP status code to return.</param>
+    /// <param name="failureKind">The classified reason for the failure.</param>
+    /// <param name="message">The human-readable error message.</param>
+    /// <returns>An <see cref="ActionResult{TValue}"/> containing the process document-listing error envelope.</returns>
     private ActionResult<GatewayResponse> CreateProcessDocumentsErrorResponse(
         string? operationId,
         int statusCode,
@@ -905,6 +954,14 @@ public sealed class ProcessesController : ControllerBase
                     message)));
     }
 
+    /// <summary>
+    /// Creates a standardized process creation error response payload.
+    /// </summary>
+    /// <param name="operationId">The optional operation identifier associated with the request.</param>
+    /// <param name="statusCode">The HTTP status code to return.</param>
+    /// <param name="failureKind">The classified reason for the failure.</param>
+    /// <param name="message">The human-readable error message.</param>
+    /// <returns>An <see cref="ActionResult{TValue}"/> containing the process creation error envelope.</returns>
     private ActionResult<GatewayResponse> CreateProcessCreationErrorResponse(
         string? operationId,
         int statusCode,
@@ -987,6 +1044,11 @@ public sealed class ProcessesController : ControllerBase
         return routeDescription;
     }
 
+    /// <summary>
+    /// Masks a Gestiona access token for logging.
+    /// </summary>
+    /// <param name="accessToken">The access token to mask.</param>
+    /// <returns>A masked token string, or <c>&lt;none&gt;</c> when no token is available.</returns>
     private static string MaskAccessToken(string? accessToken)
     {
         if (string.IsNullOrWhiteSpace(accessToken))
@@ -999,6 +1061,11 @@ public sealed class ProcessesController : ControllerBase
             : $"{accessToken[..4]}...{accessToken[^4..]}";
     }
 
+    /// <summary>
+    /// Determines whether the request content type is JSON.
+    /// </summary>
+    /// <param name="contentType">The request content type header value.</param>
+    /// <returns><see langword="true"/> when the content type starts with <c>application/json</c>; otherwise, <see langword="false"/>.</returns>
     private static bool IsJsonContentType(string? contentType)
     {
         if (string.IsNullOrWhiteSpace(contentType))

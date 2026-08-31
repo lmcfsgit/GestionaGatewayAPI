@@ -106,3 +106,13 @@ If the created process has selectables titles, select the first and use it in th
 ### Improvements
 
 Added the activityId to each procedure object in the result array of the list activity procedures
+
+<center>_Version 1.6.2_</center>
+
+### Features
+
+### Bug Fixs
+
+### Improvements
+
+.../processes/assignees/users?username=123456789, now accepts the username as a query parameter. This takes precedence over json body.

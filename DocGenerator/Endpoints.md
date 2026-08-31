@@ -1,6 +1,6 @@
 # Gestiona Gateway API Documentation
 
-<center>Versão 1.6.0</center>
+<center>Versão 1.6.1</center>
 
 ## Index
 
@@ -1149,10 +1149,11 @@ Gets the first Gestiona assignee user matching the provided username.
 #### Query parameters
 
 - `operationId` optional
+- `username` optional. When present and not blank, this value is used instead of the JSON request body.
 
 #### Request body model
 
-- `ProcessAssigneeUserRequest`
+- `ProcessAssigneeUserRequest`, required only when `username` is not provided as a query parameter.
 
 #### Request body example
 
@@ -1196,8 +1197,9 @@ Gets the first Gestiona assignee user matching the provided username.
 
 #### Notes
 
-- The endpoint requires `Content-Type: application/json`.
-- The request body must be valid JSON.
+- When `username` is provided in the query string, no JSON request body is required.
+- When `username` is not provided in the query string, the endpoint requires `Content-Type: application/json`.
+- When using the JSON-body path, the request body must be valid JSON.
 - The service returns the first item from the upstream `content` array.
 - If no assignee user is found, the endpoint returns HTTP `404`.
 
