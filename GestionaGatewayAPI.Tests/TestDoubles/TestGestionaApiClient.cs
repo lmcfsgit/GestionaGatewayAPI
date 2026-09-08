@@ -22,6 +22,12 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
     public Func<string, string, string, string?, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>>>? GetProcessDocumentsAsyncHandler { get; init; }
     public Func<string, string, GetProcessAssigneeUserRequest, CancellationToken, Task<GestionaApiCallResult<ProcessAssigneeUser?>>>? GetProcessAssigneeUserAsyncHandler { get; init; }
     public Func<string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<ProcessAssigneeGroup>>>>? GetProcessAssigneeGroupsAsyncHandler { get; init; }
+    public Func<string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<QueueSubscription>>>>? GetQueueSubscriptionsAsyncHandler { get; init; }
+    public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? SubscribeQueueConnectorAsyncHandler { get; init; }
+    public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<QueueConnectorMessage>>>>? GetQueueConnectorMessagesAsyncHandler { get; init; }
+    public Func<string, string, string, string, CancellationToken, Task<GestionaApiCallResult<QueueConnectorMessage?>>>? GetQueueConnectorMessageAsyncHandler { get; init; }
+    public Func<string, string, string, string, QueueConnectorResponseRequest, CancellationToken, Task<GestionaApiCallResult<string?>>>? SendQueueConnectorResponseAsyncHandler { get; init; }
+    public Func<string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<QueueConnector>>>>? GetQueueConnectorsAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<Third?>>>? GetThirdAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? GetThirdIdByNifAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<ThirdDefaultAddress?>>>? GetThirdDefaultAddressAsyncHandler { get; init; }
@@ -184,6 +190,61 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
         CancellationToken cancellationToken)
     {
         return Invoke<GestionaApiCallResult<IReadOnlyList<ProcessAssigneeGroup>>>(GetProcessAssigneeGroupsAsyncHandler, gestionaApiBaseUrl, accessToken, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<IReadOnlyList<QueueSubscription>>> GetQueueSubscriptionsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<IReadOnlyList<QueueSubscription>>>(GetQueueSubscriptionsAsyncHandler, gestionaApiBaseUrl, accessToken, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<IReadOnlyList<QueueConnector>>> GetQueueConnectorsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<IReadOnlyList<QueueConnector>>>(GetQueueConnectorsAsyncHandler, gestionaApiBaseUrl, accessToken, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<string?>> SubscribeQueueConnectorAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string connectorName,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<string?>>(SubscribeQueueConnectorAsyncHandler, gestionaApiBaseUrl, accessToken, connectorName, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<QueueConnectorMessage?>> GetQueueConnectorMessageAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string connectorName,
+        string messageId,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<QueueConnectorMessage?>>(GetQueueConnectorMessageAsyncHandler, gestionaApiBaseUrl, accessToken, connectorName, messageId, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<IReadOnlyList<QueueConnectorMessage>>> GetQueueConnectorMessagesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string connectorName,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<IReadOnlyList<QueueConnectorMessage>>>(GetQueueConnectorMessagesAsyncHandler, gestionaApiBaseUrl, accessToken, connectorName, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<string?>> SendQueueConnectorResponseAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string connectorName,
+        string messageId,
+        QueueConnectorResponseRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<string?>>(SendQueueConnectorResponseAsyncHandler, gestionaApiBaseUrl, accessToken, connectorName, messageId, request, cancellationToken);
     }
 
     public Task<GestionaApiCallResult<Third?>> GetThirdAsync(

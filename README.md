@@ -116,3 +116,16 @@ Added the activityId to each procedure object in the result array of the list ac
 ### Improvements
 
 .../processes/assignees/users?username=123456789, now accepts the username as a query parameter. This takes precedence over json body.
+
+<center>_Version 1.7.0_</center>
+
+### Features
+
+- New endpoints:
+  - GET .../queues/connectors/{connector_name}/{message_id}: get document signed info / messag_id info
+  - POST .../queues/connectors/{connector_name}/{message_id}: processes message_id
+  - GET .../queues/connectors/{connector_name}: get messages for connector_name
+
+### Bug Fixs
+
+### Improvements

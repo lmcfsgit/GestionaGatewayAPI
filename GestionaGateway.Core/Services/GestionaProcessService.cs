@@ -1,5 +1,5 @@
-using System.Globalization;
 using System.Text.Json;
+using GestionaGateway.Core;
 using GestionaGateway.Core.Configuration;
 using GestionaGateway.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -308,8 +308,8 @@ public sealed class GestionaProcessService : IGestionaProcessService
             new CreateDocumentInProcessDocument(
                 createdEntityId,
                 fileId,
-                FormatUnixTimestamp(createdDocument.CreationDate),
-                FormatUnixTimestamp(createdDocument.ModificationDate)),
+                DateTimeHelpers.FormatUnixTimestamp(createdDocument.CreationDate),
+                DateTimeHelpers.FormatUnixTimestamp(createdDocument.ModificationDate)),
             null);
     }
 
@@ -925,48 +925,6 @@ public sealed class GestionaProcessService : IGestionaProcessService
             : $"{gestionaApiBaseUrl}/";
 
         return new Uri(new Uri(normalizedBaseUrl, UriKind.Absolute), uploadLocation).ToString();
-    }
-
-    private static string FormatUnixTimestamp(string unixTimestamp)
-    {
-        if (!long.TryParse(unixTimestamp, out var unixSeconds))
-        {
-            return unixTimestamp;
-        }
-
-        var portugalTimeZone = ResolvePortugalTimeZone();
-        var portugalTime = TimeZoneInfo.ConvertTime(
-            DateTimeOffset.FromUnixTimeSeconds(unixSeconds),
-            portugalTimeZone);
-
-        return portugalTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-    }
-
-    private static TimeZoneInfo ResolvePortugalTimeZone()
-    {
-        try
-        {
-            return TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
-        }
-        catch (TimeZoneNotFoundException)
-        {
-        }
-        catch (InvalidTimeZoneException)
-        {
-        }
-
-        try
-        {
-            return TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-        }
-        catch (TimeZoneNotFoundException)
-        {
-        }
-        catch (InvalidTimeZoneException)
-        {
-        }
-
-        return TimeZoneInfo.Utc;
     }
 
     private sealed record UploadFileResult(

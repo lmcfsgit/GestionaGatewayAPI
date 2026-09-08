@@ -197,6 +197,43 @@ public interface IGestionaApiClient
         string accessToken,
         CancellationToken cancellationToken);
 
+    Task<GestionaApiCallResult<IReadOnlyList<QueueSubscription>>> GetQueueSubscriptionsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<string?>> SubscribeQueueConnectorAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string connectorName,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<IReadOnlyList<QueueConnectorMessage>>> GetQueueConnectorMessagesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string connectorName,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<QueueConnectorMessage?>> GetQueueConnectorMessageAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string connectorName,
+        string messageId,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<string?>> SendQueueConnectorResponseAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string connectorName,
+        string messageId,
+        QueueConnectorResponseRequest request,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<IReadOnlyList<QueueConnector>>> GetQueueConnectorsAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Gets a third from Gestiona.
     /// </summary>

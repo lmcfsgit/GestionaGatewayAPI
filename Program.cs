@@ -58,6 +58,7 @@ public sealed class Program
         builder.Services.AddScoped<IGestionaProcessService, GestionaProcessService>();
         builder.Services.AddScoped<IGestionaDocumentService, GestionaDocumentService>();
         builder.Services.AddScoped<IGestionaThirdService, GestionaThirdService>();
+        builder.Services.AddScoped<IGestionaQueueService, GestionaQueueService>();
         builder.Services.Configure<GestionaOptions>(
             builder.Configuration.GetSection(GestionaOptions.SectionName));
 

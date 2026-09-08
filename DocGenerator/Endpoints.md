@@ -25,6 +25,10 @@
 - [ProcessAssigneeUserRequest](#processassigneeuserrequest)
 - [ProcessAssigneeUserResult](#processassigneeuserresult)
 - [ProcessAssigneeGroupResult](#processassigneegroupresult)
+- [QueueConnectorMessageResult](#queueconnectormessageresult)
+- [SendQueueConnectorResponseRequest](#sendqueueconnectorresponserequest)
+- [QueueConnectorResponseResult](#queueconnectorresponseresult)
+- [QueueError](#queueerror)
 - [Download Success Output](#download-success-output)
 
 ### Shared
@@ -50,6 +54,9 @@
 - [15. GET `/documents/{document_id}`](#15-get-documentsdocument_id)
 - [16. GET `/thirds?nif=<nif>`](#16-get-thirdsnifnif)
 - [17. GET `/thirds/{third_id}`](#17-get-thirdsthird_id)
+- [18. GET `/queues/connectors/{connector_name}`](#18-get-queuesconnectorsconnector_name)
+- [19. GET `/queues/connectors/{connector_name}/{message_id}`](#19-get-queuesconnectorsconnector_namemessage_id)
+- [20. POST `/queues/connectors/{connector_name}/{message_id}`](#20-post-queuesconnectorsconnector_namemessage_id)
 
 ## Models
 
@@ -411,6 +418,74 @@ Used for each item in `GatewayResponse.result` returned by `GET /processes/assig
 }
 ```
 
+### QueueConnectorMessageResult
+
+Used inside `GatewayResponse.result` on queue connector message success. For `GET /queues/connectors/{connector_name}`, `result` is an array of this model.
+
+```json
+{
+  "message_id": "string | null",
+  "date_signed": "string | null"
+}
+```
+
+#### Field notes
+
+- `message_id`
+  Mapped from the upstream queue message `payload.target` field.
+- `date_signed`
+  Mapped from the upstream queue message `entry` field after formatting with `DateTimeHelpers.FormatUnixTimestamp`.
+
+### SendQueueConnectorResponseRequest
+
+Used as the JSON request body for `POST /queues/connectors/{connector_name}/{message_id}`.
+
+```json
+{
+  "result_success": "string",
+  "message": "string | null"
+}
+```
+
+#### Field notes
+
+- `result_success`
+  Required. Sent upstream as `result_success`.
+- `message`
+  Optional. When null or not present, it is not sent in the upstream JSON payload.
+
+### QueueConnectorResponseResult
+
+Used inside `GatewayResponse.result` when a connector response is sent successfully.
+
+```json
+{
+  "connector_name": "string",
+  "message_id": "string"
+}
+```
+
+### QueueError
+
+Used inside `GatewayResponse.result` on queue connector errors.
+
+```json
+{
+  "code": 400,
+  "name": "Bad Request",
+  "kind": "Validation",
+  "message": "string"
+}
+```
+
+#### Possible `kind` values for queue connector message
+
+- `Configuration`
+- `Validation`
+- `NotFound`
+- `NoActiveSubscription`
+- `Upstream`
+
 ### Download Success Output
 
 The download endpoint does not return JSON on success. It returns the raw document bytes in the response body.
@@ -446,6 +521,8 @@ All endpoints can optionally receive:
   When present and not blank, the gateway uses this value as the upstream Gestiona `X-Gestiona-Access-Token`.
 
 If `X-User-Access-Token` is absent or blank, the gateway uses the configured token from `Gestiona:AccessToken`.
+
+The queue connector endpoints are exceptions: they always use the configured token from `Gestiona:AccessToken` and ignore the request header token.
 
 ## Endpoints
 
@@ -1571,3 +1648,267 @@ Gets a third from Gestiona and enriches it with the default address.
 
 - If `third_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{third_id}}`, the endpoint returns HTTP `400`
+
+### 18. GET `/queues/connectors/{connector_name}`
+
+Gets queued messages from a Gestiona connector queue.
+
+Before retrieving messages, the gateway verifies that the connector exists and that there is an active subscription for it. If no active subscription exists, the gateway subscribes to the connector queue and then retrieves queued messages.
+
+#### Route parameters
+
+- `connector_name` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /connectors`
+   - The gateway checks the upstream `content` array for an item where `code` equals `connector_name`.
+   - If no connector is found, the endpoint returns HTTP `404`.
+2. `GET /queues/subscriptions`
+   - The gateway checks the upstream `content` array for an item where `name` equals `connectors#{connector_name}`.
+3. `POST /queues/connectors/{connector_name}/subscription`
+   - Called only when no active subscription is found.
+   - If the upstream response body contains a `description` property, that value is used as the gateway error `result.message`.
+4. `GET /queues/connectors/{connector_name}`
+   - Retrieves queued connector messages.
+
+#### Access token behavior
+
+This endpoint always uses the configured Gestiona access token from `Gestiona:AccessToken`. It does not use `X-User-Access-Token` from the request headers.
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: array of `QueueConnectorMessageResult`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": [
+    {
+      "message_id": "9376d53a-176e-4716-beaa-bd4486561bbd",
+      "date_signed": "2026-09-03 10:07:09"
+    }
+  ]
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `QueueError`
+
+#### Error example
+
+```json
+{
+  "operationId": "op-01",
+  "success": false,
+  "result": {
+    "code": 412,
+    "name": "Precondition Failed",
+    "kind": "Upstream",
+    "message": "already exists other consumer subscribed to queue"
+  }
+}
+```
+
+#### Notes
+
+- If `connector_name` is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved variable such as `{{connector_name}}`, the endpoint returns HTTP `400`.
+- The active subscription name must match `connectors#{connector_name}`.
+- Each upstream queue message `payload.target` is returned as `message_id`.
+- Each upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
+
+### 19. GET `/queues/connectors/{connector_name}/{message_id}`
+
+Gets a message from a Gestiona connector queue.
+
+Before retrieving the message, the gateway verifies that the connector exists and that there is an active subscription for it. If no active subscription exists, the gateway subscribes to the connector queue and then retrieves the requested message.
+
+#### Route parameters
+
+- `connector_name` required
+- `message_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /connectors`
+   - The gateway checks the upstream `content` array for an item where `code` equals `connector_name`.
+   - If no connector is found, the endpoint returns HTTP `404`.
+2. `GET /queues/subscriptions`
+   - The gateway checks the upstream `content` array for an item where `name` equals `connectors#{connector_name}`.
+3. `POST /queues/connectors/{connector_name}/subscription`
+   - Called only when no active subscription is found.
+   - If the upstream response body contains a `description` property, that value is used as the gateway error `result.message`.
+4. `GET /queues/connectors/{connector_name}/{message_id}`
+   - `Accept: application/vnd.gestiona.queues.message`
+
+#### Access token behavior
+
+This endpoint always uses the configured Gestiona access token from `Gestiona:AccessToken`. It does not use `X-User-Access-Token` from the request headers.
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: `QueueConnectorMessageResult`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "message_id": "9376d53a-176e-4716-beaa-bd4486561bbd",
+    "date_signed": "2026-09-03 10:07:09"
+  }
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `QueueError`
+
+#### Error example
+
+```json
+{
+  "operationId": "op-01",
+  "success": false,
+  "result": {
+    "code": 412,
+    "name": "Precondition Failed",
+    "kind": "Upstream",
+    "message": "already exists other consumer subscribed to queue"
+  }
+}
+```
+
+#### Notes
+
+- If `connector_name` or `message_id` is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved variable such as `{{connector_name}}` or `{{message_id}}`, the endpoint returns HTTP `400`.
+- The active subscription name must match `connectors#{connector_name}`.
+- The upstream queue message `payload.target` is returned as `message_id`.
+- The upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
+
+### 20. POST `/queues/connectors/{connector_name}/{message_id}`
+
+Sends a response for a Gestiona connector queue message.
+
+Before sending the response, the gateway verifies that the connector exists and that there is an active subscription for it. If no active subscription exists, the gateway subscribes to the connector queue and then sends the response.
+
+#### Route parameters
+
+- `connector_name` required
+- `message_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- `SendQueueConnectorResponseRequest`
+
+#### Request body example
+
+```json
+{
+  "result_success": "FALSE",
+  "message": "Mensaje de respuesta al conector"
+}
+```
+
+#### Upstream calls
+
+1. `GET /connectors`
+   - The gateway checks the upstream `content` array for an item where `code` equals `connector_name`.
+   - If no connector is found, the endpoint returns HTTP `404`.
+2. `GET /queues/subscriptions`
+   - The gateway checks the upstream `content` array for an item where `name` equals `connectors#{connector_name}`.
+3. `POST /queues/connectors/{connector_name}/subscription`
+   - Called only when no active subscription is found.
+   - If the upstream response body contains a `description` property, that value is used as the gateway error `result.message`.
+4. `POST /queues/connectors/{connector_name}/{message_id}`
+   - `Content-Type: application/vnd.gestiona.connector-response+json`
+   - Sends `result_success`.
+   - Sends `message` only when it is present.
+
+#### Access token behavior
+
+This endpoint always uses the configured Gestiona access token from `Gestiona:AccessToken`. It does not use `X-User-Access-Token` from the request headers.
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: `QueueConnectorResponseResult`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "connector_name": "sigma-medidata-file-docs",
+    "message_id": "9376d53a-176e-4716-beaa-bd4486561bbd"
+  }
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `QueueError`
+
+#### Error example
+
+```json
+{
+  "operationId": "op-01",
+  "success": false,
+  "result": {
+    "code": 412,
+    "name": "Precondition Failed",
+    "kind": "Upstream",
+    "message": "already exists other consumer subscribed to queue"
+  }
+}
+```
+
+#### Notes
+
+- The gateway accepts `Content-Type: application/json` and `Content-Type: application/vnd.gestiona.connector-response+json` for this endpoint.
+- If `connector_name` or `message_id` is empty or whitespace, the endpoint returns HTTP `400`.
+- If `result_success` is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved variable such as `{{connector_name}}` or `{{message_id}}`, the endpoint returns HTTP `400`.
+- The active subscription name must match `connectors#{connector_name}`.

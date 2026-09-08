@@ -1,0 +1,117 @@
+Queues Controller - GetConnectorMessage Workflow
+
+Endpoint:
+GET /queues/connectors/{connector_name}/{message_id}
+
+1. The controller receives the request.
+
+   It receives:
+   - connector_name from the route.
+   - message_id from the route.
+   - optional operation_id from the query string.
+   - optional Gestiona access token from the request headers.
+
+2. The controller validates the route values.
+
+   If connector_name or message_id is missing or blank, it returns a GatewayResponse
+   error with HTTP 400 Bad Request.
+
+3. The controller calls the queue service.
+
+   The controller calls:
+
+   _gestionaQueueService.GetConnectorMessageAsync(
+       connectorName,
+       messageId,
+       GestionaRequestHeaders.GetAccessToken(Request),
+       cancellationToken)
+
+   From this point, GestionaQueueService handles the upstream Gestiona calls.
+
+4. The service checks whether the connector exists.
+
+   It calls the Gestiona upstream endpoint:
+
+   GET /connectors
+
+   Then it checks the response content array for an item where:
+
+   code == connector_name
+
+   If no connector exists with that code, the controller returns a GatewayResponse
+   error with HTTP 404 Not Found.
+
+5. The service checks whether there is an active subscription.
+
+   It calls the Gestiona upstream endpoint:
+
+   GET /queues/subscriptions
+
+   Then it checks the response content array for an item where:
+
+   name == connectors#{connector_name}
+
+6. If there is no active subscription, the service subscribes to the connector queue.
+
+   It calls the Gestiona upstream endpoint:
+
+   POST /queues/connectors/{connector_name}/subscription
+
+   If this call fails, the service uses the upstream error details. When Gestiona
+   returns an error body with a description property, that description is used as
+   the GatewayResponse result.message value.
+
+   Example:
+
+   {
+       "code": 412,
+       "name": "Precondition Failed",
+       "description": "already exists other consumer subscribed to queue",
+       "technical_details": "http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.13"
+   }
+
+   GatewayResponse result.message:
+
+   already exists other consumer subscribed to queue
+
+7. If the subscription already exists or was created successfully, the service gets the message.
+
+   It calls the Gestiona upstream endpoint:
+
+   GET /queues/connectors/{connector_name}/{message_id}
+
+   With the Accept header:
+
+   Accept: application/vnd.gestiona.queues.message
+
+8. The service maps the upstream message response.
+
+   From Gestiona:
+
+   {
+       "payload": {
+           "target": "..."
+       },
+       "entry": "...",
+       "next_delivery": "..."
+   }
+
+   The gateway maps the result to:
+
+   {
+       "message_id": "{payload.target}",
+       "date_signed": "{entry formatted}"
+   }
+
+   The entry value is formatted with DateTimeHelpers.FormatUnixTimestamp.
+
+9. The controller returns the final GatewayResponse.
+
+   On success:
+   - success is true.
+   - result contains the mapped queue message object.
+
+   On failure:
+   - success is false.
+   - result contains the gateway error object using the same error format as the
+     other gateway endpoints.
