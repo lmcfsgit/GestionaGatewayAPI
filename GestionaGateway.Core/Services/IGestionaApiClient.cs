@@ -83,6 +83,26 @@ public interface IGestionaApiClient
         OpenProcessFileRequest request,
         CancellationToken cancellationToken);
 
+    Task<GestionaApiCallResult> RelateFilesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        RelatedFilesRequest request,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult> DeleteRelatedFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        string relatedFileId,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<IReadOnlyList<RelatedFile>>> GetRelatedFilesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        CancellationToken cancellationToken);
+
     Task<GestionaApiCallResult<IReadOnlyList<Activity>>> GetActivitiesAsync(
         string gestionaApiBaseUrl,
         string accessToken,

@@ -12,6 +12,9 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
     public Func<string, string, string, string, CancellationToken, Task<GestionaApiCallResult<CreateProcessFileResponse?>>>? CreateProcessFileAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<SelectableTitlesResponse?>>>? GetSelectableTitlesAsyncHandler { get; init; }
     public Func<string, string, string, OpenProcessFileRequest, CancellationToken, Task<GestionaApiCallResult<OpenProcessFileResponse?>>>? OpenProcessFileAsyncHandler { get; init; }
+    public Func<string, string, string, RelatedFilesRequest, CancellationToken, Task<GestionaApiCallResult>>? RelateFilesAsyncHandler { get; init; }
+    public Func<string, string, string, string, CancellationToken, Task<GestionaApiCallResult>>? DeleteRelatedFileAsyncHandler { get; init; }
+    public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<RelatedFile>>>>? GetRelatedFilesAsyncHandler { get; init; }
     public Func<string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<Activity>>>>? GetActivitiesAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<ExternalProcedure>>>>? GetExternalProceduresAsyncHandler { get; init; }
     public Func<string, string, string, string?, CreateDocumentInFileRequest, CancellationToken, Task<GestionaApiCallResult<CreateDocumentAndFolderResponse?>>>? CreateDocumentAndFolderAsyncHandler { get; init; }
@@ -95,6 +98,35 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
         CancellationToken cancellationToken)
     {
         return Invoke<GestionaApiCallResult<OpenProcessFileResponse?>>(OpenProcessFileAsyncHandler, gestionaApiBaseUrl, accessToken, fileOpenHref, request, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult> RelateFilesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        RelatedFilesRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult>(RelateFilesAsyncHandler, gestionaApiBaseUrl, accessToken, fileId, request, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult> DeleteRelatedFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        string relatedFileId,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult>(DeleteRelatedFileAsyncHandler, gestionaApiBaseUrl, accessToken, fileId, relatedFileId, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<IReadOnlyList<RelatedFile>>> GetRelatedFilesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<IReadOnlyList<RelatedFile>>>(GetRelatedFilesAsyncHandler, gestionaApiBaseUrl, accessToken, fileId, cancellationToken);
     }
 
     public Task<GestionaApiCallResult<IReadOnlyList<Activity>>> GetActivitiesAsync(

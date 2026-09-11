@@ -129,3 +129,16 @@ Added the activityId to each procedure object in the result array of the list ac
 ### Bug Fixs
 
 ### Improvements
+
+<center>_Version 1.8.0_</center>
+
+### Features
+
+- New endpoints:
+  - POST .../processes/related: create a relation between processes
+  - DELETE .../processes/{process_id}/{related_process_id}: delete relation between processes
+  - GET .../processes/{process_id}/related - gets related processes
+
+### Bug Fixs
+
+### Improvements

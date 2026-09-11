@@ -11,6 +11,161 @@ namespace GestionaGatewayAPI.Tests;
 public sealed class GestionaProcessServiceTests
 {
     [Fact]
+    public async Task RelateProcessesAsync_PostsRelatedFilesLinkAndReturnsRequest()
+    {
+        string? receivedBaseUrl = null;
+        string? receivedToken = null;
+        string? receivedFileId = null;
+        RelatedFilesRequest? receivedRequest = null;
+        var apiClient = new TestGestionaApiClient
+        {
+            RelateFilesAsyncHandler = (baseUrl, token, fileId, request, cancellationToken) =>
+            {
+                receivedBaseUrl = baseUrl;
+                receivedToken = token;
+                receivedFileId = fileId;
+                receivedRequest = request;
+                return Task.FromResult(new GestionaApiCallResult(200, true));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var requestBody = new RelatedProcessesRequest("file-1", "file-2");
+        var result = await service.RelateProcessesAsync(
+            requestBody,
+            "override-token",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Same(requestBody, result.RelatedProcesses);
+        Assert.Equal("https://gestiona.example/rest", receivedBaseUrl);
+        Assert.Equal("override-token", receivedToken);
+        Assert.Equal("file-1", receivedFileId);
+        var link = Assert.Single(receivedRequest!.Links);
+        Assert.Equal("related-files", link.Rel);
+        Assert.Equal("https://gestiona.example/rest/files/file-2", link.Href);
+        Assert.Null(link.Title);
+    }
+
+    [Fact]
+    public async Task RelateProcessesAsync_WhenId2IsMissing_ReturnsValidationFailure()
+    {
+        var service = CreateService(new TestGestionaApiClient());
+
+        var result = await service.RelateProcessesAsync(
+            new RelatedProcessesRequest("file-1", " "),
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(GetProcessFailureKind.Validation, result.FailureKind);
+        Assert.Equal("id2 is required.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task DeleteRelatedProcessAsync_DeletesRelatedFile()
+    {
+        string? receivedBaseUrl = null;
+        string? receivedToken = null;
+        string? receivedFileId = null;
+        string? receivedRelatedFileId = null;
+        var apiClient = new TestGestionaApiClient
+        {
+            DeleteRelatedFileAsyncHandler = (baseUrl, token, fileId, relatedFileId, cancellationToken) =>
+            {
+                receivedBaseUrl = baseUrl;
+                receivedToken = token;
+                receivedFileId = fileId;
+                receivedRelatedFileId = relatedFileId;
+                return Task.FromResult(new GestionaApiCallResult(204, true));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.DeleteRelatedProcessAsync(
+            "file-1",
+            "file-2",
+            "override-token",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("https://gestiona.example/rest", receivedBaseUrl);
+        Assert.Equal("override-token", receivedToken);
+        Assert.Equal("file-1", receivedFileId);
+        Assert.Equal("file-2", receivedRelatedFileId);
+    }
+
+    [Fact]
+    public async Task DeleteRelatedProcessAsync_WhenRelatedProcessIdIsMissing_ReturnsValidationFailure()
+    {
+        var service = CreateService(new TestGestionaApiClient());
+
+        var result = await service.DeleteRelatedProcessAsync(
+            "file-1",
+            " ",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(GetProcessFailureKind.Validation, result.FailureKind);
+        Assert.Equal("relatedProcessId is required.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetRelatedProcessesAsync_ReturnsMappedRelatedProcesses()
+    {
+        string? receivedBaseUrl = null;
+        string? receivedToken = null;
+        string? receivedFileId = null;
+        var apiClient = new TestGestionaApiClient
+        {
+            GetRelatedFilesAsyncHandler = (baseUrl, token, fileId, cancellationToken) =>
+            {
+                receivedBaseUrl = baseUrl;
+                receivedToken = token;
+                receivedFileId = fileId;
+                IReadOnlyList<RelatedFile> relatedFiles =
+                [
+                    new("file-2", "98/2026")
+                ];
+                return Task.FromResult(new GestionaApiCallResult<IReadOnlyList<RelatedFile>>(
+                    200,
+                    true,
+                    relatedFiles));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetRelatedProcessesAsync(
+            "file-1",
+            "override-token",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("https://gestiona.example/rest", receivedBaseUrl);
+        Assert.Equal("override-token", receivedToken);
+        Assert.Equal("file-1", receivedFileId);
+        var relatedProcess = Assert.Single(result.RelatedProcesses!);
+        Assert.Equal("file-2", relatedProcess.Id);
+        Assert.Equal("98/2026", relatedProcess.ProcessNumber);
+    }
+
+    [Fact]
+    public async Task GetRelatedProcessesAsync_WhenProcessIdIsMissing_ReturnsValidationFailure()
+    {
+        var service = CreateService(new TestGestionaApiClient());
+
+        var result = await service.GetRelatedProcessesAsync(
+            " ",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(GetProcessFailureKind.Validation, result.FailureKind);
+        Assert.Equal("processId is required.", result.ErrorMessage);
+    }
+
+    [Fact]
     public async Task CreateProcessAsync_CreatesAndOpensGestionaFile()
     {
         string? receivedActivityId = null;

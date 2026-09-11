@@ -92,6 +92,251 @@ public sealed class ProcessesController : ControllerBase
     }
 
     /// <summary>
+    /// Relates two Gestiona process files.
+    /// </summary>
+    /// <param name="request">The related processes request body.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing the original request body on success, or an error payload when the relation fails.</returns>
+    [HttpPost("related")]
+    public async Task<ActionResult<GatewayResponse>> RelateProcesses(
+        [FromBody] RelatedProcessesRequest? request,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received related processes request for {Id1}/{Id2} with operationId {OperationId}",
+            nameof(RelateProcesses),
+            request?.Id1,
+            request?.Id2,
+            operationId);
+
+        if (request is null)
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "Request body is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Id1))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "id1 is required.");
+        }
+
+        if (string.Equals(request.Id1, "{{id1}}", StringComparison.Ordinal))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "id1 contains an unresolved variable.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Id2))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "id2 is required.");
+        }
+
+        if (string.Equals(request.Id2, "{{id2}}", StringComparison.Ordinal))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "id2 contains an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.RelateProcessesAsync(
+            request,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(
+            operationId,
+            true,
+            result.RelatedProcesses!));
+    }
+
+    /// <summary>
+    /// Gets the Gestiona process files related to a process file.
+    /// </summary>
+    /// <param name="processId">The Gestiona file identifier whose related processes should be retrieved.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing related process ids and numbers, or an error payload when the lookup fails.</returns>
+    [HttpGet("{process_id}/related")]
+    public async Task<ActionResult<GatewayResponse>> GetRelatedProcesses(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received related processes request for {ProcessId} with operationId {OperationId}",
+            nameof(GetRelatedProcesses),
+            processId,
+            operationId);
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "process_id route parameter is required.");
+        }
+
+        if (string.Equals(processId, "{{process_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "process_id route parameter contains an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.GetRelatedProcessesAsync(
+            processId,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(
+            operationId,
+            true,
+            result.RelatedProcesses ?? []));
+    }
+
+    /// <summary>
+    /// Deletes a related Gestiona process file relation.
+    /// </summary>
+    /// <param name="processId">The Gestiona file identifier that owns the relation.</param>
+    /// <param name="relatedProcessId">The related Gestiona file identifier to remove.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing an empty object on success, or an error payload when deletion fails.</returns>
+    [HttpDelete("{process_id}/related/{related_process_id}")]
+    public async Task<ActionResult<GatewayResponse>> DeleteRelatedProcess(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "related_process_id")] string relatedProcessId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received delete related process request for {ProcessId}/{RelatedProcessId} with operationId {OperationId}",
+            nameof(DeleteRelatedProcess),
+            processId,
+            relatedProcessId,
+            operationId);
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "process_id route parameter is required.");
+        }
+
+        if (string.Equals(processId, "{{process_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "process_id route parameter contains an unresolved variable.");
+        }
+
+        if (string.IsNullOrWhiteSpace(relatedProcessId))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "related_process_id route parameter is required.");
+        }
+
+        if (string.Equals(relatedProcessId, "{{related_process_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                "related_process_id route parameter contains an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.DeleteRelatedProcessAsync(
+            processId,
+            relatedProcessId,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(
+            operationId,
+            true,
+            new { }));
+    }
+
+    /// <summary>
     /// Resolves the Gestiona file identifier associated with a process number.
     /// </summary>
     /// <param name="processNumber">The external process number used to resolve the Gestiona file identifier.</param>

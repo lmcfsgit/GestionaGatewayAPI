@@ -570,6 +570,154 @@ public sealed class GestionaApiClient : IGestionaApiClient
         return new GestionaApiCallResult<OpenProcessFileResponse?>((int)response.StatusCode, true, responseModel);
     }
 
+    public async Task<GestionaApiCallResult> RelateFilesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        RelatedFilesRequest request,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(fileId)}/related-files";
+        var serializedPayload = JsonSerializer.Serialize(request);
+        var requestContent = new StringContent(serializedPayload, Encoding.UTF8);
+        requestContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/vnd.gestiona.links+json");
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, route)
+        {
+            Content = requestContent
+        };
+
+        _logger.LogInformation(
+            "({Method}) relating Gestiona file {FileId} via {RequestUri}",
+            nameof(RelateFilesAsync),
+            fileId,
+            new Uri(httpClient.BaseAddress, httpRequest.RequestUri!));
+        _logger.LogDebug(
+            "({Method}) Gestiona request body:{NewLine}{RequestBody}",
+            nameof(RelateFilesAsync),
+            Environment.NewLine,
+            FormatJsonForLog(serializedPayload));
+
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
+        LogDeprecatedHeader(response, nameof(RelateFilesAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) related-files response: StatusCode={StatusCode}, Body={Body}",
+            nameof(RelateFilesAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed with status code {StatusCode}, Body={Body}",
+                nameof(RelateFilesAsync),
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult((int)response.StatusCode, false);
+        }
+
+        return new GestionaApiCallResult((int)response.StatusCode, true);
+    }
+
+    public async Task<GestionaApiCallResult> DeleteRelatedFileAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        string relatedFileId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(fileId)}/related-files/{Uri.EscapeDataString(relatedFileId)}";
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Delete, route);
+
+        _logger.LogInformation(
+            "({Method}) deleting Gestiona related file {RelatedFileId} from file {FileId} via {RequestUri}",
+            nameof(DeleteRelatedFileAsync),
+            relatedFileId,
+            fileId,
+            new Uri(httpClient.BaseAddress, httpRequest.RequestUri!));
+
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
+        LogDeprecatedHeader(response, nameof(DeleteRelatedFileAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) delete related-files response: StatusCode={StatusCode}, Body={Body}",
+            nameof(DeleteRelatedFileAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed with status code {StatusCode}, Body={Body}",
+                nameof(DeleteRelatedFileAsync),
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult((int)response.StatusCode, false);
+        }
+
+        return new GestionaApiCallResult((int)response.StatusCode, true);
+    }
+
+    public async Task<GestionaApiCallResult<IReadOnlyList<RelatedFile>>> GetRelatedFilesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string fileId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(fileId)}/related-files";
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Get, route);
+
+        _logger.LogInformation(
+            "({Method}) getting Gestiona related files for file {FileId} via {RequestUri}",
+            nameof(GetRelatedFilesAsync),
+            fileId,
+            new Uri(httpClient.BaseAddress, httpRequest.RequestUri!));
+
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetRelatedFilesAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) get related-files response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetRelatedFilesAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed with status code {StatusCode}, Body={Body}",
+                nameof(GetRelatedFilesAsync),
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<IReadOnlyList<RelatedFile>>((int)response.StatusCode, false, []);
+        }
+
+        var responseModel = DeserializeResponse<RelatedFilesResponse>(
+            responseBody,
+            nameof(GetRelatedFilesAsync));
+
+        return new GestionaApiCallResult<IReadOnlyList<RelatedFile>>(
+            (int)response.StatusCode,
+            true,
+            responseModel?.Content ?? []);
+    }
+
     /// <summary>
     /// Gets the activities available in the Gestiona catalog.
     /// </summary>

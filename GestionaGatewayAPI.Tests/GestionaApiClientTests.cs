@@ -472,6 +472,50 @@ public sealed class GestionaApiClientTests
     }
 
     [Fact]
+    public async Task GetRelatedFilesAsync_UsesExpectedRouteAndMapsContent()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        var responseJson = """
+            {
+              "page": 0,
+              "content": [
+                {
+                  "id": "3234c22f-961c-4dec-af3e-af5629076a22",
+                  "code": "98/2026"
+                }
+              ]
+            }
+            """;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            capturedRequest = request;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(
+            new StubHttpClientFactory(handler),
+            NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.GetRelatedFilesAsync(
+            "https://gestiona.example/rest",
+            "token",
+            "file/1",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(HttpMethod.Get, capturedRequest!.Method);
+        Assert.Equal(
+            "https://gestiona.example/rest/files/file%2F1/related-files",
+            capturedRequest.RequestUri!.ToString());
+        Assert.Equal("token", capturedRequest.Headers.GetValues("X-Gestiona-Access-Token").Single());
+        var relatedFile = Assert.Single(result.Value!);
+        Assert.Equal("3234c22f-961c-4dec-af3e-af5629076a22", relatedFile.Id);
+        Assert.Equal("98/2026", relatedFile.Code);
+    }
+
+    [Fact]
     public async Task GetExternalProceduresAsync_MapsContentAndUsesExpectedRoute()
     {
         HttpRequestMessage? capturedRequest = null;

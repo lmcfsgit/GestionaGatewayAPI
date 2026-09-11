@@ -1,6 +1,6 @@
 # Gestiona Gateway API Documentation
 
-<center>Versão 1.6.1</center>
+<center>Versão 1.8.0</center>
 
 ## Index
 
@@ -8,6 +8,8 @@
 
 - [UploadDocumentRequest](#uploaddocumentrequest)
 - [CreateProcessRequest](#createprocessrequest)
+- [RelatedProcessesRequest](#relatedprocessesrequest)
+- [RelatedProcessItem](#relatedprocessitem)
 - [GatewayResponse](#gatewayresponse)
 - [UploadDocumentResult](#uploaddocumentresult)
 - [UploadDocumentError](#uploaddocumenterror)
@@ -38,25 +40,28 @@
 ### Endpoints
 
 - [1. POST `/processes`](#1-post-processes)
-- [2. GET `/processes?process_number=<numero>`](#2-get-processesprocess_numbernumero)
-- [3. POST `/processes/documents?process_number=<numero>`](#3-post-processesdocumentsprocess_numbernumero)
-- [4. POST `/processes/{process_id}/documents`](#4-post-processesprocess_iddocuments)
-- [5. POST `/processes/documents/{folder_id}?process_number=<numero>`](#5-post-processesdocumentsfolder_idprocess_numbernumero)
-- [6. POST `/processes/{process_id}/documents/{folder_id}`](#6-post-processesprocess_iddocumentsfolder_id)
-- [7. GET `/processes/thirds?process_number=<numero>`](#7-get-processesthirdsprocess_numbernumero)
-- [8. GET `/processes/{process_id}/thirds`](#8-get-processesprocess_idthirds)
-- [9. GET `/processes/{process_id}/documents`](#9-get-processesprocess_iddocuments)
-- [10. GET `/processes/{process_id}/documents/{document_id}`](#10-get-processesprocess_iddocumentsdocument_id)
-- [11. GET `/processes/assignees/users`](#11-get-processesassigneesusers)
-- [12. GET `/processes/assignees/groups`](#12-get-processesassigneesgroups)
-- [13. GET `/activities`](#13-get-activities)
-- [14. GET `/activities/{activity_id}/procedures`](#14-get-activitiesactivity_idprocedures)
-- [15. GET `/documents/{document_id}`](#15-get-documentsdocument_id)
-- [16. GET `/thirds?nif=<nif>`](#16-get-thirdsnifnif)
-- [17. GET `/thirds/{third_id}`](#17-get-thirdsthird_id)
-- [18. GET `/queues/connectors/{connector_name}`](#18-get-queuesconnectorsconnector_name)
-- [19. GET `/queues/connectors/{connector_name}/{message_id}`](#19-get-queuesconnectorsconnector_namemessage_id)
-- [20. POST `/queues/connectors/{connector_name}/{message_id}`](#20-post-queuesconnectorsconnector_namemessage_id)
+- [2. POST `/processes/related`](#2-post-processesrelated)
+- [3. GET `/processes/{process_id}/related`](#3-get-processesprocess_idrelated)
+- [4. DELETE `/processes/{process_id}/related/{related_process_id}`](#4-delete-processesprocess_idrelatedrelated_process_id)
+- [5. GET `/processes?process_number=<numero>`](#5-get-processesprocess_numbernumero)
+- [6. POST `/processes/documents?process_number=<numero>`](#6-post-processesdocumentsprocess_numbernumero)
+- [7. POST `/processes/{process_id}/documents`](#7-post-processesprocess_iddocuments)
+- [8. POST `/processes/documents/{folder_id}?process_number=<numero>`](#8-post-processesdocumentsfolder_idprocess_numbernumero)
+- [9. POST `/processes/{process_id}/documents/{folder_id}`](#9-post-processesprocess_iddocumentsfolder_id)
+- [10. GET `/processes/thirds?process_number=<numero>`](#10-get-processesthirdsprocess_numbernumero)
+- [11. GET `/processes/{process_id}/thirds`](#11-get-processesprocess_idthirds)
+- [12. GET `/processes/{process_id}/documents`](#12-get-processesprocess_iddocuments)
+- [13. GET `/processes/{process_id}/documents/{document_id}`](#13-get-processesprocess_iddocumentsdocument_id)
+- [14. GET `/processes/assignees/users`](#14-get-processesassigneesusers)
+- [15. GET `/processes/assignees/groups`](#15-get-processesassigneesgroups)
+- [16. GET `/activities`](#16-get-activities)
+- [17. GET `/activities/{activity_id}/procedures`](#17-get-activitiesactivity_idprocedures)
+- [18. GET `/documents/{document_id}`](#18-get-documentsdocument_id)
+- [19. GET `/thirds?nif=<nif>`](#19-get-thirdsnifnif)
+- [20. GET `/thirds/{third_id}`](#20-get-thirdsthird_id)
+- [21. GET `/queues/connectors/{connector_name}`](#21-get-queuesconnectorsconnector_name)
+- [22. GET `/queues/connectors/{connector_name}/{message_id}`](#22-get-queuesconnectorsconnector_namemessage_id)
+- [23. POST `/queues/connectors/{connector_name}/{message_id}`](#23-post-queuesconnectorsconnector_namemessage_id)
 
 ## Models
 
@@ -113,6 +118,42 @@ Used as the request body for `POST /processes`.
   Used to build the file-opening management unit group link: `{GestionaApiBaseUrl}/groups/{groupId}`.
 - `freeSubject`
   Sent upstream as `free_title`.
+
+### RelatedProcessesRequest
+
+Used as the request body for `POST /processes/related`.
+
+```json
+{
+  "id1": "string",
+  "id2": "string"
+}
+```
+
+#### Field notes
+
+- `id1`
+  The Gestiona file id that will receive the related-file link.
+- `id2`
+  The Gestiona file id to link as a related file.
+
+### RelatedProcessItem
+
+Used for each item in `GatewayResponse.result` returned by `GET /processes/{process_id}/related`.
+
+```json
+{
+  "id": "string | null",
+  "processNumber": "string | null"
+}
+```
+
+#### Field notes
+
+- `id`
+  Mapped from each upstream related file `content` item `id` field.
+- `processNumber`
+  Mapped from each upstream related file `content` item `code` field.
 
 ### GatewayResponse
 
@@ -599,7 +640,173 @@ Creates a new Gestiona process by creating the upstream file from the catalog/ex
 - `ProcessResult.Id` is mapped from the file-open upstream response `id`.
 - `ProcessResult.processNumber` is mapped from the file-open upstream response `code`.
 
-### 2. GET `/processes?process_number=<numero>`
+### 2. POST `/processes/related`
+
+Creates a related-file link between two Gestiona process files.
+
+#### Route parameters
+
+- none
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- `RelatedProcessesRequest`
+
+#### Request body example
+
+```json
+{
+  "id1": "30bcb012-47e2-4e7e-92e0-a0f7278b52b8",
+  "id2": "a7a43429-a82c-4245-9f50-f1e853905a99"
+}
+```
+
+#### Upstream calls
+
+1. `POST /files/{id1}/related-files`
+   - `Content-Type: application/vnd.gestiona.links+json`
+   - Sends a `links` array with one item where `rel` is `related-files`.
+   - The link `href` is `{GestionaApiBaseUrl}/files/{id2}`.
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: `RelatedProcessesRequest`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "id1": "30bcb012-47e2-4e7e-92e0-a0f7278b52b8",
+    "id2": "a7a43429-a82c-4245-9f50-f1e853905a99"
+  }
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessError`
+
+#### Notes
+
+- If the request body is missing, the endpoint returns HTTP `400`.
+- If `id1` or `id2` is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved variable such as `{{id1}}` or `{{id2}}`, the endpoint returns HTTP `400`.
+
+### 3. GET `/processes/{process_id}/related`
+
+Gets the process files related to a Gestiona process file.
+
+#### Route parameters
+
+- `process_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/related-files`
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: array of `RelatedProcessItem`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": [
+    {
+      "id": "3234c22f-961c-4dec-af3e-af5629076a22",
+      "processNumber": "98/2026"
+    }
+  ]
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessError`
+
+#### Notes
+
+- The gateway reads the upstream `content` array.
+- Each upstream `content` item `id` is mapped to `id`.
+- Each upstream `content` item `code` is mapped to `processNumber`.
+- If `process_id` is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved variable such as `{{process_id}}`, the endpoint returns HTTP `400`.
+
+### 4. DELETE `/processes/{process_id}/related/{related_process_id}`
+
+Deletes a related-file link between two Gestiona process files.
+
+#### Route parameters
+
+- `process_id` required
+- `related_process_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `DELETE /files/{process_id}/related-files/{related_process_id}`
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: empty object
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {}
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessError`
+
+#### Notes
+
+- If `process_id` or `related_process_id` is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved variable such as `{{process_id}}` or `{{related_process_id}}`, the endpoint returns HTTP `400`.
+
+### 5. GET `/processes?process_number=<numero>`
 
 Resolves the Gestiona file id associated with `process_number`.
 
@@ -652,7 +859,7 @@ Resolves the Gestiona file id associated with `process_number`.
 - If `process_number` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{process_number}}`, the endpoint returns HTTP `400`
 
-### 3. POST `/processes/documents?process_number=<numero>`
+### 6. POST `/processes/documents?process_number=<numero>`
 
 Creates a document by resolving the target Gestiona process_id (file id in gestiona) from the query parameter `process_number`.
 
@@ -753,7 +960,7 @@ Creates a document by resolving the target Gestiona process_id (file id in gesti
 }
 ```
 
-### 4. POST `/processes/{process_id}/documents`
+### 7. POST `/processes/{process_id}/documents`
 
 Creates a document directly in the Gestiona file identified by `process_id`.
 
@@ -831,7 +1038,7 @@ Creates a document directly in the Gestiona file identified by `process_id`.
 - If both `fileName` and `content` are provided, the current implementation uses `content`.
 - On successful create operations, `result.id` may come either from the upstream `id` field or, when that field is missing, from the last segment of the upstream `self` link.
 
-### 5. POST `/processes/documents/{folder_id}?process_number=<numero>`
+### 8. POST `/processes/documents/{folder_id}?process_number=<numero>`
 
 Creates a document inside the Gestiona folder identified by `folder_id`, after resolving the target Gestiona file from the query parameter `process_number`.
 
@@ -913,7 +1120,7 @@ Creates a document inside the Gestiona folder identified by `folder_id`, after r
 - If both `fileName` and `content` are provided, the current implementation uses `content`.
 - On successful create operations, `result.id` may come either from the upstream `id` field or, when that field is missing, from the last segment of the upstream `self` link.
 
-### 6. POST `/processes/{process_id}/documents/{folder_id}`
+### 9. POST `/processes/{process_id}/documents/{folder_id}`
 
 Creates a document directly inside the Gestiona folder identified by `folder_id`, under the file identified by `process_id`.
 
@@ -991,7 +1198,7 @@ Creates a document directly inside the Gestiona folder identified by `folder_id`
 - If both `fileName` and `content` are provided, the current implementation uses `content`.
 - On successful create operations, `result.id` may come either from the upstream `id` field or, when that field is missing, from the last segment of the upstream `self` link.
 
-### 7. GET `/processes/thirds?process_number=<numero>`
+### 10. GET `/processes/thirds?process_number=<numero>`
 
 Gets the third identifiers associated with a Gestiona process file resolved from `process_number`.
 
@@ -1045,7 +1252,7 @@ Gets the third identifiers associated with a Gestiona process file resolved from
 - If `process_number` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{process_number}}`, the endpoint returns HTTP `400`
 
-### 8. GET `/processes/{process_id}/thirds`
+### 11. GET `/processes/{process_id}/thirds`
 
 Gets the third identifiers associated with a Gestiona process file.
 
@@ -1098,7 +1305,7 @@ Gets the third identifiers associated with a Gestiona process file.
 - If `process_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{process_id}}`, the endpoint returns HTTP `400`
 
-### 9. GET `/processes/{process_id}/documents`
+### 12. GET `/processes/{process_id}/documents`
 
 Gets the documents and folders at the root of a Gestiona process file.
 
@@ -1159,7 +1366,7 @@ Gets the documents and folders at the root of a Gestiona process file.
 - If `process_id` is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved variable such as `{{process_id}}`, the endpoint returns HTTP `400`.
 
-### 10. GET `/processes/{process_id}/documents/{document_id}`
+### 13. GET `/processes/{process_id}/documents/{document_id}`
 
 Gets the documents and folders contained inside the specified Gestiona document or folder.
 
@@ -1215,7 +1422,7 @@ Gets the documents and folders contained inside the specified Gestiona document 
 - If either route parameter is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved `{{process_id}}` or `{{document_id}}` variable, the endpoint returns HTTP `400`.
 
-### 11. GET `/processes/assignees/users`
+### 14. GET `/processes/assignees/users`
 
 Gets the first Gestiona assignee user matching the provided username.
 
@@ -1280,7 +1487,7 @@ Gets the first Gestiona assignee user matching the provided username.
 - The service returns the first item from the upstream `content` array.
 - If no assignee user is found, the endpoint returns HTTP `404`.
 
-### 12. GET `/processes/assignees/groups`
+### 15. GET `/processes/assignees/groups`
 
 Gets the Gestiona assignee groups available for process assignment.
 
@@ -1333,7 +1540,7 @@ Gets the Gestiona assignee groups available for process assignment.
 - Only `id` and `name` are exposed in each result item.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 13. GET `/activities`
+### 16. GET `/activities`
 
 Gets the activities available in the Gestiona catalog.
 
@@ -1385,7 +1592,7 @@ Gets the activities available in the Gestiona catalog.
 - The service returns the upstream `content` array.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 14. GET `/activities/{activity_id}/procedures`
+### 17. GET `/activities/{activity_id}/procedures`
 
 Gets the external procedures available for a Gestiona activity.
 
@@ -1438,7 +1645,7 @@ Gets the external procedures available for a Gestiona activity.
 - The gateway maps each upstream external procedure `title` to response field `name`.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 15. GET `/documents/{document_id}`
+### 18. GET `/documents/{document_id}`
 
 Downloads a document from Gestiona. This is an absolute route and is not prefixed by `/processes`.
 
@@ -1511,7 +1718,7 @@ The controller chooses the download filename in this order:
   - in the `X-Operation-Id` response header on success
 - When the upstream response includes document storage extension metadata, it is exposed in the `X-Storage-Extension` response header
 
-### 16. GET `/thirds?nif=<nif>`
+### 19. GET `/thirds?nif=<nif>`
 
 Gets a third from Gestiona by resolving the third id from a NIF, then enriches it with the default address.
 
@@ -1582,7 +1789,7 @@ Gets a third from Gestiona by resolving the third id from a NIF, then enriches i
 - If `nif` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{nif}}`, the endpoint returns HTTP `400`
 
-### 17. GET `/thirds/{third_id}`
+### 20. GET `/thirds/{third_id}`
 
 Gets a third from Gestiona and enriches it with the default address.
 
@@ -1649,7 +1856,7 @@ Gets a third from Gestiona and enriches it with the default address.
 - If `third_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{third_id}}`, the endpoint returns HTTP `400`
 
-### 18. GET `/queues/connectors/{connector_name}`
+### 21. GET `/queues/connectors/{connector_name}`
 
 Gets queued messages from a Gestiona connector queue.
 
@@ -1734,7 +1941,7 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - Each upstream queue message `payload.target` is returned as `message_id`.
 - Each upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
 
-### 19. GET `/queues/connectors/{connector_name}/{message_id}`
+### 22. GET `/queues/connectors/{connector_name}/{message_id}`
 
 Gets a message from a Gestiona connector queue.
 
@@ -1818,7 +2025,7 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - The upstream queue message `payload.target` is returned as `message_id`.
 - The upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
 
-### 20. POST `/queues/connectors/{connector_name}/{message_id}`
+### 23. POST `/queues/connectors/{connector_name}/{message_id}`
 
 Sends a response for a Gestiona connector queue message.
 

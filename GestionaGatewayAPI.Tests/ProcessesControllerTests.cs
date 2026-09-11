@@ -115,6 +115,148 @@ public sealed class ProcessesControllerTests
         Assert.Equal("Luis Silva", user.Name);
     }
 
+    [Fact]
+    public async Task RelateProcesses_ReturnsOriginalRequestBody()
+    {
+        RelatedProcessesRequest? receivedRequest = null;
+        var controller = CreateController(new TestGestionaProcessService
+        {
+            RelateProcessesAsyncHandler = (request, accessTokenOverride, cancellationToken) =>
+            {
+                receivedRequest = request;
+                return Task.FromResult(new RelatedProcessesResult(
+                    true,
+                    GetProcessFailureKind.None,
+                    null,
+                    request,
+                    null));
+            }
+        });
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var request = new RelatedProcessesRequest("file-1", "file-2");
+        var response = await controller.RelateProcesses(
+            request,
+            "operation-1",
+            CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(response.Result);
+        var gatewayResponse = Assert.IsType<GatewayResponse>(okResult.Value);
+        Assert.Equal("operation-1", gatewayResponse.OperationId);
+        Assert.True(gatewayResponse.Success);
+        Assert.Same(request, receivedRequest);
+        var relatedProcesses = Assert.IsType<RelatedProcessesRequest>(gatewayResponse.Result);
+        Assert.Equal("file-1", relatedProcesses.Id1);
+        Assert.Equal("file-2", relatedProcesses.Id2);
+    }
+
+    [Fact]
+    public async Task RelateProcesses_WhenId1IsMissing_ReturnsGatewayError()
+    {
+        var controller = CreateController();
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var response = await controller.RelateProcesses(
+            new RelatedProcessesRequest(" ", "file-2"),
+            "operation-1",
+            CancellationToken.None);
+
+        var objectResult = Assert.IsType<ObjectResult>(response.Result);
+        Assert.Equal(StatusCodes.Status400BadRequest, objectResult.StatusCode);
+        var gatewayResponse = Assert.IsType<GatewayResponse>(objectResult.Value);
+        Assert.False(gatewayResponse.Success);
+        var error = Assert.IsType<ProcessError>(gatewayResponse.Result);
+        Assert.Equal(GetProcessFailureKind.Validation.ToString(), error.Kind);
+        Assert.Equal("id1 is required.", error.Message);
+    }
+
+    [Fact]
+    public async Task DeleteRelatedProcess_ReturnsGatewayResponseWithEmptyObject()
+    {
+        string? receivedProcessId = null;
+        string? receivedRelatedProcessId = null;
+        var controller = CreateController(new TestGestionaProcessService
+        {
+            DeleteRelatedProcessAsyncHandler = (processId, relatedProcessId, accessTokenOverride, cancellationToken) =>
+            {
+                receivedProcessId = processId;
+                receivedRelatedProcessId = relatedProcessId;
+                return Task.FromResult(new DeleteRelatedProcessResult(
+                    true,
+                    GetProcessFailureKind.None,
+                    null,
+                    null));
+            }
+        });
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var response = await controller.DeleteRelatedProcess(
+            "file-1",
+            "file-2",
+            "operation-1",
+            CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(response.Result);
+        var gatewayResponse = Assert.IsType<GatewayResponse>(okResult.Value);
+        Assert.Equal("operation-1", gatewayResponse.OperationId);
+        Assert.True(gatewayResponse.Success);
+        Assert.Equal("file-1", receivedProcessId);
+        Assert.Equal("file-2", receivedRelatedProcessId);
+        Assert.NotNull(gatewayResponse.Result);
+        Assert.Empty(gatewayResponse.Result.GetType().GetProperties());
+    }
+
+    [Fact]
+    public async Task GetRelatedProcesses_ReturnsGatewayResponseWithRelatedProcesses()
+    {
+        string? receivedProcessId = null;
+        var controller = CreateController(new TestGestionaProcessService
+        {
+            GetRelatedProcessesAsyncHandler = (processId, accessTokenOverride, cancellationToken) =>
+            {
+                receivedProcessId = processId;
+                IReadOnlyList<RelatedProcessItem> relatedProcesses =
+                [
+                    new("file-2", "98/2026")
+                ];
+                return Task.FromResult(new GetRelatedProcessesResult(
+                    true,
+                    GetProcessFailureKind.None,
+                    null,
+                    relatedProcesses,
+                    null));
+            }
+        });
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var response = await controller.GetRelatedProcesses(
+            "file-1",
+            "operation-1",
+            CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(response.Result);
+        var gatewayResponse = Assert.IsType<GatewayResponse>(okResult.Value);
+        Assert.Equal("operation-1", gatewayResponse.OperationId);
+        Assert.True(gatewayResponse.Success);
+        Assert.Equal("file-1", receivedProcessId);
+        var relatedProcesses = Assert.IsAssignableFrom<IReadOnlyList<RelatedProcessItem>>(gatewayResponse.Result);
+        var relatedProcess = Assert.Single(relatedProcesses);
+        Assert.Equal("file-2", relatedProcess.Id);
+        Assert.Equal("98/2026", relatedProcess.ProcessNumber);
+    }
+
     private static ProcessesController CreateController()
     {
         return CreateController(new TestGestionaProcessService());
@@ -132,6 +274,9 @@ public sealed class ProcessesControllerTests
     {
         public Func<string?, CancellationToken, Task<GetProcessAssigneeGroupsResult>>? GetProcessAssigneeGroupsAsyncHandler { get; init; }
         public Func<GetProcessAssigneeUserRequest, string?, CancellationToken, Task<GetProcessAssigneeUserResult>>? GetProcessAssigneeUserAsyncHandler { get; init; }
+        public Func<RelatedProcessesRequest, string?, CancellationToken, Task<RelatedProcessesResult>>? RelateProcessesAsyncHandler { get; init; }
+        public Func<string, string, string?, CancellationToken, Task<DeleteRelatedProcessResult>>? DeleteRelatedProcessAsyncHandler { get; init; }
+        public Func<string, string?, CancellationToken, Task<GetRelatedProcessesResult>>? GetRelatedProcessesAsyncHandler { get; init; }
 
         public Task<CreateDocumentInProcessResult> CreateDocumentInProcessAsync(
             UploadDocumentRequest request,
@@ -151,6 +296,46 @@ public sealed class ProcessesControllerTests
             CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
+        }
+
+        public Task<RelatedProcessesResult> RelateProcessesAsync(
+            RelatedProcessesRequest request,
+            string? accessTokenOverride,
+            CancellationToken cancellationToken)
+        {
+            if (RelateProcessesAsyncHandler is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            return RelateProcessesAsyncHandler(request, accessTokenOverride, cancellationToken);
+        }
+
+        public Task<DeleteRelatedProcessResult> DeleteRelatedProcessAsync(
+            string processId,
+            string relatedProcessId,
+            string? accessTokenOverride,
+            CancellationToken cancellationToken)
+        {
+            if (DeleteRelatedProcessAsyncHandler is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            return DeleteRelatedProcessAsyncHandler(processId, relatedProcessId, accessTokenOverride, cancellationToken);
+        }
+
+        public Task<GetRelatedProcessesResult> GetRelatedProcessesAsync(
+            string processId,
+            string? accessTokenOverride,
+            CancellationToken cancellationToken)
+        {
+            if (GetRelatedProcessesAsyncHandler is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            return GetRelatedProcessesAsyncHandler(processId, accessTokenOverride, cancellationToken);
         }
 
         public Task<GetProcessResult> GetProcessAsync(

@@ -313,6 +313,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    /// <summary>
+    /// Resolves the Gestiona file identifier associated with the provided process number.
+    /// </summary>
+    /// <param name="processNumber">The process number used to find the Gestiona file.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The process lookup result, including the resolved file id on success.</returns>
     public async Task<GetProcessResult> GetProcessAsync(
         string processNumber,
         string? accessTokenOverride,
@@ -381,6 +388,252 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    /// <summary>
+    /// Creates a related-file link between two Gestiona process files.
+    /// </summary>
+    /// <param name="request">The request containing the source file id and the related file id.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The relation result, including the original request body on success.</returns>
+    public async Task<RelatedProcessesResult> RelateProcessesAsync(
+        RelatedProcessesRequest request,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. Id1={Id1}, Id2={Id2}",
+            nameof(RelateProcessesAsync),
+            request.Id1,
+            request.Id2);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return RelatedProcessesFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return RelatedProcessesFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Id1))
+        {
+            return RelatedProcessesFailure(
+                GetProcessFailureKind.Validation,
+                "id1 is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Id2))
+        {
+            return RelatedProcessesFailure(
+                GetProcessFailureKind.Validation,
+                "id2 is required.");
+        }
+
+        var relatedFilesRequest = new RelatedFilesRequest(
+        [
+            new GestionaLink(
+                "related-files",
+                ResolveResourceHref(gestionaApiBaseUrl, "files", request.Id2!),
+                null)
+        ]);
+
+        var result = await _gestionaApiClient.RelateFilesAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            request.Id1!,
+            relatedFilesRequest,
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var failureKind = result.StatusCode == 404
+                ? GetProcessFailureKind.NotFound
+                : GetProcessFailureKind.Upstream;
+            return RelatedProcessesFailure(
+                failureKind,
+                "Failed to relate Gestiona files.",
+                GetUpstreamErrorStatusCode(result.StatusCode));
+        }
+
+        return new RelatedProcessesResult(
+            true,
+            GetProcessFailureKind.None,
+            null,
+            request,
+            null);
+    }
+
+    /// <summary>
+    /// Deletes a related-file link from a Gestiona process file.
+    /// </summary>
+    /// <param name="processId">The Gestiona file id that owns the related-file link.</param>
+    /// <param name="relatedProcessId">The related Gestiona file id to remove.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The delete result, including failure details when the upstream deletion fails.</returns>
+    public async Task<DeleteRelatedProcessResult> DeleteRelatedProcessAsync(
+        string processId,
+        string relatedProcessId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. ProcessId={ProcessId}, RelatedProcessId={RelatedProcessId}",
+            nameof(DeleteRelatedProcessAsync),
+            processId,
+            relatedProcessId);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return DeleteRelatedProcessFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return DeleteRelatedProcessFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return DeleteRelatedProcessFailure(
+                GetProcessFailureKind.Validation,
+                "processId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(relatedProcessId))
+        {
+            return DeleteRelatedProcessFailure(
+                GetProcessFailureKind.Validation,
+                "relatedProcessId is required.");
+        }
+
+        var result = await _gestionaApiClient.DeleteRelatedFileAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            processId,
+            relatedProcessId,
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var failureKind = result.StatusCode == 404
+                ? GetProcessFailureKind.NotFound
+                : GetProcessFailureKind.Upstream;
+            return DeleteRelatedProcessFailure(
+                failureKind,
+                "Failed to delete Gestiona related file.",
+                GetUpstreamErrorStatusCode(result.StatusCode));
+        }
+
+        return new DeleteRelatedProcessResult(
+            true,
+            GetProcessFailureKind.None,
+            null,
+            null);
+    }
+
+    /// <summary>
+    /// Gets the Gestiona process files related to the specified process file.
+    /// </summary>
+    /// <param name="processId">The Gestiona file id whose related files should be retrieved.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The related-processes result, including mapped ids and process numbers on success.</returns>
+    public async Task<GetRelatedProcessesResult> GetRelatedProcessesAsync(
+        string processId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. ProcessId={ProcessId}",
+            nameof(GetRelatedProcessesAsync),
+            processId);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return GetRelatedProcessesFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return GetRelatedProcessesFailure(
+                GetProcessFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return GetRelatedProcessesFailure(
+                GetProcessFailureKind.Validation,
+                "processId is required.");
+        }
+
+        var result = await _gestionaApiClient.GetRelatedFilesAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            processId,
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var failureKind = result.StatusCode == 404
+                ? GetProcessFailureKind.NotFound
+                : GetProcessFailureKind.Upstream;
+            return GetRelatedProcessesFailure(
+                failureKind,
+                "Failed to get Gestiona related files.",
+                GetUpstreamErrorStatusCode(result.StatusCode));
+        }
+
+        var relatedProcesses = result.Value?
+            .Select(file => new RelatedProcessItem(file.Id, file.Code))
+            .ToArray() ?? [];
+
+        return new GetRelatedProcessesResult(
+            true,
+            GetProcessFailureKind.None,
+            null,
+            relatedProcesses,
+            null);
+    }
+
+    /// <summary>
+    /// Gets the third identifiers associated with a Gestiona process file.
+    /// </summary>
+    /// <param name="processId">The process number or Gestiona file id to inspect.</param>
+    /// <param name="resolveFileIdFromProcessCode">Indicates whether <paramref name="processId"/> must first be resolved from a process number.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The process thirds result, including semicolon-separated third ids on success.</returns>
     public async Task<GetProcessThirdsResult> GetProcessThirdsAsync(
         string processId,
         bool resolveFileIdFromProcessCode,
@@ -484,6 +737,14 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    /// <summary>
+    /// Gets documents and folders from a Gestiona process file or from a nested document/folder.
+    /// </summary>
+    /// <param name="processId">The Gestiona file id that contains the documents.</param>
+    /// <param name="documentId">The optional document or folder id whose children should be retrieved.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The process documents result, including mapped documents and folders on success.</returns>
     public async Task<GetProcessDocumentsResult> GetProcessDocumentsAsync(
         string processId,
         string? documentId,
@@ -555,6 +816,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    /// <summary>
+    /// Gets the first Gestiona assignee user matching the supplied username.
+    /// </summary>
+    /// <param name="request">The assignee user filter request.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The assignee user result, including the first matching user on success.</returns>
     public async Task<GetProcessAssigneeUserResult> GetProcessAssigneeUserAsync(
         GetProcessAssigneeUserRequest request,
         string? accessTokenOverride,
@@ -624,6 +892,12 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    /// <summary>
+    /// Gets the Gestiona assignee groups available for process assignment.
+    /// </summary>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The assignee groups result, including all mapped groups on success.</returns>
     public async Task<GetProcessAssigneeGroupsResult> GetProcessAssigneeGroupsAsync(
         string? accessTokenOverride,
         CancellationToken cancellationToken)
@@ -674,6 +948,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
             null);
     }
 
+    /// <summary>
+    /// Creates a failed document-creation result.
+    /// </summary>
+    /// <param name="failureKind">The document-creation failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed document-creation result.</returns>
     private static CreateDocumentInProcessResult Failure(
         CreateDocumentInProcessFailureKind failureKind,
         string errorMessage,
@@ -682,6 +963,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new CreateDocumentInProcessResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
+    /// <summary>
+    /// Creates a failed process-thirds result.
+    /// </summary>
+    /// <param name="failureKind">The process-thirds failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed process-thirds result.</returns>
     private static GetProcessThirdsResult ThirdsFailure(
         GetProcessThirdsFailureKind failureKind,
         string errorMessage,
@@ -690,6 +978,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new GetProcessThirdsResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
     }
 
+    /// <summary>
+    /// Creates a failed process-documents result.
+    /// </summary>
+    /// <param name="failureKind">The process-documents failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed process-documents result.</returns>
     private static GetProcessDocumentsResult DocumentsFailure(
         GetProcessDocumentsFailureKind failureKind,
         string errorMessage,
@@ -698,6 +993,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new GetProcessDocumentsResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
+    /// <summary>
+    /// Creates a failed process lookup result.
+    /// </summary>
+    /// <param name="failureKind">The process lookup failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed process lookup result.</returns>
     private static GetProcessResult ProcessFailure(
         GetProcessFailureKind failureKind,
         string errorMessage,
@@ -706,6 +1008,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new GetProcessResult(false, failureKind, errorMessage, null, null, upstreamStatusCode);
     }
 
+    /// <summary>
+    /// Creates a failed assignee-user result.
+    /// </summary>
+    /// <param name="failureKind">The assignee-user failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed assignee-user result.</returns>
     private static GetProcessAssigneeUserResult AssigneeUserFailure(
         GetProcessFailureKind failureKind,
         string errorMessage,
@@ -714,6 +1023,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new GetProcessAssigneeUserResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
+    /// <summary>
+    /// Creates a failed assignee-groups result.
+    /// </summary>
+    /// <param name="failureKind">The assignee-groups failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed assignee-groups result.</returns>
     private static GetProcessAssigneeGroupsResult AssigneeGroupsFailure(
         GetProcessFailureKind failureKind,
         string errorMessage,
@@ -722,6 +1038,58 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new GetProcessAssigneeGroupsResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
+    /// <summary>
+    /// Creates a failed related-processes result.
+    /// </summary>
+    /// <param name="failureKind">The related-processes failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed related-processes result.</returns>
+    private static RelatedProcessesResult RelatedProcessesFailure(
+        GetProcessFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new RelatedProcessesResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    /// <summary>
+    /// Creates a failed related-process deletion result.
+    /// </summary>
+    /// <param name="failureKind">The related-process deletion failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed related-process deletion result.</returns>
+    private static DeleteRelatedProcessResult DeleteRelatedProcessFailure(
+        GetProcessFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new DeleteRelatedProcessResult(false, failureKind, errorMessage, upstreamStatusCode);
+    }
+
+    /// <summary>
+    /// Creates a failed get-related-processes result.
+    /// </summary>
+    /// <param name="failureKind">The get-related-processes failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed get-related-processes result.</returns>
+    private static GetRelatedProcessesResult GetRelatedProcessesFailure(
+        GetProcessFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetRelatedProcessesResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    /// <summary>
+    /// Creates a failed process-creation result.
+    /// </summary>
+    /// <param name="failureKind">The process-creation failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed process-creation result.</returns>
     private static CreateProcessResult CreateProcessFailure(
         CreateProcessFailureKind failureKind,
         string errorMessage,
@@ -730,6 +1098,11 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new CreateProcessResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
+    /// <summary>
+    /// Validates the required fields for process creation.
+    /// </summary>
+    /// <param name="request">The process creation request to validate.</param>
+    /// <returns>A validation error message, or null when the request is valid.</returns>
     private static string? ValidateCreateProcessRequest(CreateProcessRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.ActivityId))
@@ -760,6 +1133,13 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return null;
     }
 
+    /// <summary>
+    /// Builds an absolute Gestiona resource href from a route name and identifier.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The configured Gestiona API base URL.</param>
+    /// <param name="route">The resource route, such as files, users, or groups.</param>
+    /// <param name="id">The resource identifier to append to the route.</param>
+    /// <returns>The absolute Gestiona resource href.</returns>
     private static string ResolveResourceHref(
         string gestionaApiBaseUrl,
         string route,
@@ -774,6 +1154,11 @@ public sealed class GestionaProcessService : IGestionaProcessService
             $"{route}/{Uri.EscapeDataString(id)}").ToString();
     }
 
+    /// <summary>
+    /// Extracts the Gestiona process file id from a file-open href.
+    /// </summary>
+    /// <param name="fileOpenHref">The absolute or relative file-open href returned by Gestiona.</param>
+    /// <returns>The extracted process file id, or null when it cannot be resolved.</returns>
     private static string? ResolveProcessIdFromFileOpenHref(string fileOpenHref)
     {
         var path = Uri.TryCreate(fileOpenHref, UriKind.Absolute, out var absoluteUri)
@@ -802,6 +1187,11 @@ public sealed class GestionaProcessService : IGestionaProcessService
             : null;
     }
 
+    /// <summary>
+    /// Returns the upstream status code only when it represents an error.
+    /// </summary>
+    /// <param name="statusCode">The status code returned by Gestiona.</param>
+    /// <returns>The upstream error status code, or null for non-error status codes.</returns>
     private static int? GetUpstreamErrorStatusCode(int statusCode)
     {
         return statusCode >= 400
@@ -927,11 +1317,24 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return new Uri(new Uri(normalizedBaseUrl, UriKind.Absolute), uploadLocation).ToString();
     }
 
+    /// <summary>
+    /// Carries the resolved upload content or the validation failure produced while resolving it.
+    /// </summary>
+    /// <param name="FailureResult">The failure result when upload content could not be resolved.</param>
+    /// <param name="SafeFileName">The validated file name when content came from local storage.</param>
+    /// <param name="Content">The binary content to upload.</param>
     private sealed record UploadFileResult(
         CreateDocumentInProcessResult? FailureResult,
         string? SafeFileName,
             byte[]? Content);
 
+    /// <summary>
+    /// Creates and opens a Gestiona process file from the supplied catalog procedure, external procedure, user, group, and subject.
+    /// </summary>
+    /// <param name="request">The process creation request.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The process creation result, including the opened process id and number on success.</returns>
     public async Task<CreateProcessResult> CreateProcessAsync(
         CreateProcessRequest request,
         string? accessTokenOverride,
