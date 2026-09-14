@@ -257,6 +257,54 @@ public sealed class ProcessesControllerTests
         Assert.Equal("98/2026", relatedProcess.ProcessNumber);
     }
 
+    [Fact]
+    public async Task GetDocumentSignatures_ReturnsGatewayResponseWithSignatures()
+    {
+        string? receivedProcessId = null;
+        string? receivedDocumentId = null;
+        var controller = CreateController(new TestGestionaProcessService
+        {
+            GetProcessDocumentSignaturesAsyncHandler = (processId, documentId, accessTokenOverride, cancellationToken) =>
+            {
+                receivedProcessId = processId;
+                receivedDocumentId = documentId;
+                IReadOnlyList<ProcessDocumentSignatureResult> signatures =
+                [
+                    new("2026-09-09 10:12:12", "SIGNED", "081847637", "Luis Silva")
+                ];
+                return Task.FromResult(new GetProcessDocumentSignaturesResult(
+                    true,
+                    GetProcessDocumentsFailureKind.None,
+                    null,
+                    signatures,
+                    null));
+            }
+        });
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var response = await controller.GetDocumentSignatures(
+            "file-1",
+            "document-1",
+            "operation-1",
+            CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(response.Result);
+        var gatewayResponse = Assert.IsType<GatewayResponse>(okResult.Value);
+        Assert.Equal("operation-1", gatewayResponse.OperationId);
+        Assert.True(gatewayResponse.Success);
+        Assert.Equal("file-1", receivedProcessId);
+        Assert.Equal("document-1", receivedDocumentId);
+        var signatures = Assert.IsAssignableFrom<IReadOnlyList<ProcessDocumentSignatureResult>>(gatewayResponse.Result);
+        var signature = Assert.Single(signatures);
+        Assert.Equal("2026-09-09 10:12:12", signature.DateSigned);
+        Assert.Equal("SIGNED", signature.SignatureState);
+        Assert.Equal("081847637", signature.Username);
+        Assert.Equal("Luis Silva", signature.Name);
+    }
+
     private static ProcessesController CreateController()
     {
         return CreateController(new TestGestionaProcessService());
@@ -277,6 +325,7 @@ public sealed class ProcessesControllerTests
         public Func<RelatedProcessesRequest, string?, CancellationToken, Task<RelatedProcessesResult>>? RelateProcessesAsyncHandler { get; init; }
         public Func<string, string, string?, CancellationToken, Task<DeleteRelatedProcessResult>>? DeleteRelatedProcessAsyncHandler { get; init; }
         public Func<string, string?, CancellationToken, Task<GetRelatedProcessesResult>>? GetRelatedProcessesAsyncHandler { get; init; }
+        public Func<string, string, string?, CancellationToken, Task<GetProcessDocumentSignaturesResult>>? GetProcessDocumentSignaturesAsyncHandler { get; init; }
 
         public Task<CreateDocumentInProcessResult> CreateDocumentInProcessAsync(
             UploadDocumentRequest request,
@@ -362,6 +411,20 @@ public sealed class ProcessesControllerTests
             CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
+        }
+
+        public Task<GetProcessDocumentSignaturesResult> GetProcessDocumentSignaturesAsync(
+            string processId,
+            string documentId,
+            string? accessTokenOverride,
+            CancellationToken cancellationToken)
+        {
+            if (GetProcessDocumentSignaturesAsyncHandler is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            return GetProcessDocumentSignaturesAsyncHandler(processId, documentId, accessTokenOverride, cancellationToken);
         }
 
         public Task<GetProcessAssigneeUserResult> GetProcessAssigneeUserAsync(

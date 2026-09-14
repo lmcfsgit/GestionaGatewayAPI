@@ -23,6 +23,7 @@
 - [ProcessThirdsResult](#processthirdsresult)
 - [ProcessThirdsError](#processthirdserror)
 - [ProcessDocumentItem](#processdocumentitem)
+- [ProcessDocumentSignatureResult](#processdocumentsignatureresult)
 - [ProcessDocumentsError](#processdocumentserror)
 - [ProcessAssigneeUserRequest](#processassigneeuserrequest)
 - [ProcessAssigneeUserResult](#processassigneeuserresult)
@@ -52,16 +53,17 @@
 - [11. GET `/processes/{process_id}/thirds`](#11-get-processesprocess_idthirds)
 - [12. GET `/processes/{process_id}/documents`](#12-get-processesprocess_iddocuments)
 - [13. GET `/processes/{process_id}/documents/{document_id}`](#13-get-processesprocess_iddocumentsdocument_id)
-- [14. GET `/processes/assignees/users`](#14-get-processesassigneesusers)
-- [15. GET `/processes/assignees/groups`](#15-get-processesassigneesgroups)
-- [16. GET `/activities`](#16-get-activities)
-- [17. GET `/activities/{activity_id}/procedures`](#17-get-activitiesactivity_idprocedures)
-- [18. GET `/documents/{document_id}`](#18-get-documentsdocument_id)
-- [19. GET `/thirds?nif=<nif>`](#19-get-thirdsnifnif)
-- [20. GET `/thirds/{third_id}`](#20-get-thirdsthird_id)
-- [21. GET `/queues/connectors/{connector_name}`](#21-get-queuesconnectorsconnector_name)
-- [22. GET `/queues/connectors/{connector_name}/{message_id}`](#22-get-queuesconnectorsconnector_namemessage_id)
-- [23. POST `/queues/connectors/{connector_name}/{message_id}`](#23-post-queuesconnectorsconnector_namemessage_id)
+- [14. GET `/processes/{process_id}/documents/{document_id}/signatures`](#14-get-processesprocess_iddocumentsdocument_idsignatures)
+- [15. GET `/processes/assignees/users`](#15-get-processesassigneesusers)
+- [16. GET `/processes/assignees/groups`](#16-get-processesassigneesgroups)
+- [17. GET `/activities`](#17-get-activities)
+- [18. GET `/activities/{activity_id}/procedures`](#18-get-activitiesactivity_idprocedures)
+- [19. GET `/documents/{document_id}`](#19-get-documentsdocument_id)
+- [20. GET `/thirds?nif=<nif>`](#20-get-thirdsnifnif)
+- [21. GET `/thirds/{third_id}`](#21-get-thirdsthird_id)
+- [22. GET `/queues/connectors/{connector_name}`](#22-get-queuesconnectorsconnector_name)
+- [23. GET `/queues/connectors/{connector_name}/{message_id}`](#23-get-queuesconnectorsconnector_namemessage_id)
+- [24. POST `/queues/connectors/{connector_name}/{message_id}`](#24-post-queuesconnectorsconnector_namemessage_id)
 
 ## Models
 
@@ -405,6 +407,30 @@ Used for each item in `GatewayResponse.result` returned by the process document-
   The upstream `rel` value.
 - `id`
   The last path segment of the upstream `href`.
+
+### ProcessDocumentSignatureResult
+
+Used for each item in `GatewayResponse.result` returned by `GET /processes/{process_id}/documents/{document_id}/signatures`.
+
+```json
+{
+  "date_signed": "string | null",
+  "signature_state": "string | null",
+  "username": "string | null",
+  "name": "string | null"
+}
+```
+
+#### Field notes
+
+- `date_signed`
+  Mapped from the upstream signature `date` field after formatting with `DateTimeHelpers.FormatUnixTimestamp`.
+- `signature_state`
+  Mapped from the upstream signature `signature_state` field.
+- `username`
+  Mapped from the user response obtained by following the signature link where `rel` is `signed-user` or `signer-user`.
+- `name`
+  Mapped from the user response obtained by following the signature link where `rel` is `signed-user` or `signer-user`.
 
 ### ProcessDocumentsError
 
@@ -1422,7 +1448,68 @@ Gets the documents and folders contained inside the specified Gestiona document 
 - If either route parameter is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved `{{process_id}}` or `{{document_id}}` variable, the endpoint returns HTTP `400`.
 
-### 14. GET `/processes/assignees/users`
+### 14. GET `/processes/{process_id}/documents/{document_id}/signatures`
+
+Gets signatures associated with a Gestiona process document and enriches each signature with signer user information.
+
+#### Route parameters
+
+- `process_id` required
+- `document_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/documents/{document_id}/signatures`
+2. For each signature item with a link where `rel` is `signed-user` or `signer-user`:
+   - `GET {signer-user href}`
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: array of `ProcessDocumentSignatureResult`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": [
+    {
+      "date_signed": "2026-09-09 10:12:12",
+      "signature_state": "SIGNED",
+      "username": "081847637",
+      "name": "Luis Silva"
+    }
+  ]
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessDocumentsError`
+
+#### Notes
+
+- The gateway reads the upstream signatures `content` array.
+- Each upstream signature `date` is returned as `date_signed` after timestamp formatting.
+- Each upstream signature `signature_state` is returned as `signature_state`.
+- The gateway follows the signature user link to map `username` and `name`.
+- If `process_id` or `document_id` is empty or whitespace, the endpoint returns HTTP `400`.
+- If Postman sends an unresolved `{{process_id}}` or `{{document_id}}` variable, the endpoint returns HTTP `400`.
+
+### 15. GET `/processes/assignees/users`
 
 Gets the first Gestiona assignee user matching the provided username.
 
@@ -1487,7 +1574,7 @@ Gets the first Gestiona assignee user matching the provided username.
 - The service returns the first item from the upstream `content` array.
 - If no assignee user is found, the endpoint returns HTTP `404`.
 
-### 15. GET `/processes/assignees/groups`
+### 16. GET `/processes/assignees/groups`
 
 Gets the Gestiona assignee groups available for process assignment.
 
@@ -1540,7 +1627,7 @@ Gets the Gestiona assignee groups available for process assignment.
 - Only `id` and `name` are exposed in each result item.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 16. GET `/activities`
+### 17. GET `/activities`
 
 Gets the activities available in the Gestiona catalog.
 
@@ -1592,7 +1679,7 @@ Gets the activities available in the Gestiona catalog.
 - The service returns the upstream `content` array.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 17. GET `/activities/{activity_id}/procedures`
+### 18. GET `/activities/{activity_id}/procedures`
 
 Gets the external procedures available for a Gestiona activity.
 
@@ -1645,7 +1732,7 @@ Gets the external procedures available for a Gestiona activity.
 - The gateway maps each upstream external procedure `title` to response field `name`.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 18. GET `/documents/{document_id}`
+### 19. GET `/documents/{document_id}`
 
 Downloads a document from Gestiona. This is an absolute route and is not prefixed by `/processes`.
 
@@ -1718,7 +1805,7 @@ The controller chooses the download filename in this order:
   - in the `X-Operation-Id` response header on success
 - When the upstream response includes document storage extension metadata, it is exposed in the `X-Storage-Extension` response header
 
-### 19. GET `/thirds?nif=<nif>`
+### 20. GET `/thirds?nif=<nif>`
 
 Gets a third from Gestiona by resolving the third id from a NIF, then enriches it with the default address.
 
@@ -1789,7 +1876,7 @@ Gets a third from Gestiona by resolving the third id from a NIF, then enriches i
 - If `nif` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{nif}}`, the endpoint returns HTTP `400`
 
-### 20. GET `/thirds/{third_id}`
+### 21. GET `/thirds/{third_id}`
 
 Gets a third from Gestiona and enriches it with the default address.
 
@@ -1856,7 +1943,7 @@ Gets a third from Gestiona and enriches it with the default address.
 - If `third_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{third_id}}`, the endpoint returns HTTP `400`
 
-### 21. GET `/queues/connectors/{connector_name}`
+### 22. GET `/queues/connectors/{connector_name}`
 
 Gets queued messages from a Gestiona connector queue.
 
@@ -1941,7 +2028,7 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - Each upstream queue message `payload.target` is returned as `message_id`.
 - Each upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
 
-### 22. GET `/queues/connectors/{connector_name}/{message_id}`
+### 23. GET `/queues/connectors/{connector_name}/{message_id}`
 
 Gets a message from a Gestiona connector queue.
 
@@ -2025,7 +2112,7 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - The upstream queue message `payload.target` is returned as `message_id`.
 - The upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
 
-### 23. POST `/queues/connectors/{connector_name}/{message_id}`
+### 24. POST `/queues/connectors/{connector_name}/{message_id}`
 
 Sends a response for a Gestiona connector queue message.
 

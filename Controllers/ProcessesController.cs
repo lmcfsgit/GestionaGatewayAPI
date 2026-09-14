@@ -555,6 +555,90 @@ public sealed class ProcessesController : ControllerBase
     }
 
     /// <summary>
+    /// Gets signatures for a Gestiona process document.
+    /// </summary>
+    /// <param name="processId">The Gestiona file identifier that contains the document.</param>
+    /// <param name="documentId">The Gestiona document identifier whose signatures should be retrieved.</param>
+    /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>A response envelope containing document signatures, or an error payload.</returns>
+    [HttpGet("{process_id}/documents/{document_id}/signatures")]
+    public async Task<ActionResult<GatewayResponse>> GetDocumentSignatures(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "document_id")] string documentId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received process document signatures request for {ProcessId}/{DocumentId} with operationId {OperationId}",
+            nameof(GetDocumentSignatures),
+            processId,
+            documentId,
+            operationId);
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id route parameter is required.");
+        }
+
+        if (string.Equals(processId, "{{process_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id route parameter contains an unresolved variable.");
+        }
+
+        if (string.IsNullOrWhiteSpace(documentId))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "document_id route parameter is required.");
+        }
+
+        if (string.Equals(documentId, "{{document_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "document_id route parameter contains an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.GetProcessDocumentSignaturesAsync(
+            processId,
+            documentId,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessDocumentsFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.Signatures ?? []));
+    }
+
+    /// <summary>
     /// Gets the documents and folders contained in a process document or folder.
     /// </summary>
     /// <param name="processId">The Gestiona file identifier that contains the document or folder.</param>

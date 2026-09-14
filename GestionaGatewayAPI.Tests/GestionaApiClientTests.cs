@@ -516,6 +516,98 @@ public sealed class GestionaApiClientTests
     }
 
     [Fact]
+    public async Task GetProcessDocumentSignaturesAsync_UsesExpectedRouteAndMapsContent()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        var responseJson = """
+            {
+              "page": 1,
+              "content": [
+                {
+                  "date": "1788880332",
+                  "signature_state": "SIGNED",
+                  "links": [
+                    {
+                      "rel": "signer-user",
+                      "href": "https://gestiona.example/rest/users/user-1",
+                      "title": "Luis Silva"
+                    }
+                  ]
+                }
+              ]
+            }
+            """;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            capturedRequest = request;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(
+            new StubHttpClientFactory(handler),
+            NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.GetProcessDocumentSignaturesAsync(
+            "https://gestiona.example/rest",
+            "token",
+            "file/1",
+            "document/1",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(HttpMethod.Get, capturedRequest!.Method);
+        Assert.Equal(
+            "https://gestiona.example/rest/files/file%2F1/documents/document%2F1/signatures",
+            capturedRequest.RequestUri!.ToString());
+        Assert.Equal("token", capturedRequest.Headers.GetValues("X-Gestiona-Access-Token").Single());
+        var signature = Assert.Single(result.Value!);
+        Assert.Equal("1788880332", signature.Date);
+        Assert.Equal("SIGNED", signature.SignatureState);
+        var link = Assert.Single(signature.Links!);
+        Assert.Equal("signer-user", link.Rel);
+        Assert.Equal("https://gestiona.example/rest/users/user-1", link.Href);
+    }
+
+    [Fact]
+    public async Task GetUserByHrefAsync_FollowsHrefAndMapsUser()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        var responseJson = """
+            {
+              "id": "8be7a78b-787a-4061-a11c-1bfcdf2d627a",
+              "username": "081847637",
+              "name": "Luis Silva"
+            }
+            """;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            capturedRequest = request;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(
+            new StubHttpClientFactory(handler),
+            NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.GetUserByHrefAsync(
+            "https://gestiona.example/rest",
+            "token",
+            "users/user-1",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(HttpMethod.Get, capturedRequest!.Method);
+        Assert.Equal("https://gestiona.example/rest/users/user-1", capturedRequest.RequestUri!.ToString());
+        Assert.Equal("token", capturedRequest.Headers.GetValues("X-Gestiona-Access-Token").Single());
+        Assert.Equal("081847637", result.Value!.Username);
+        Assert.Equal("Luis Silva", result.Value.Name);
+    }
+
+    [Fact]
     public async Task GetExternalProceduresAsync_MapsContentAndUsesExpectedRoute()
     {
         HttpRequestMessage? capturedRequest = null;

@@ -7,6 +7,7 @@ Documents/
 #DocGenerator/
 .vs/
 .vscode/
+VBCSCompiler/
 
 *.user
 *.rsuser
@@ -27,4 +28,3 @@ packages/
 appsettings.Local.json
 appsettings.*.local.json
 git-commands.txt
-

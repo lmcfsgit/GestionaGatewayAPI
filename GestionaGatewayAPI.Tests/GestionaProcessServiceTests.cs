@@ -1,3 +1,4 @@
+using GestionaGateway.Core;
 using GestionaGateway.Core.Configuration;
 using GestionaGateway.Core.Models;
 using GestionaGateway.Core.Services;
@@ -163,6 +164,74 @@ public sealed class GestionaProcessServiceTests
         Assert.False(result.Success);
         Assert.Equal(GetProcessFailureKind.Validation, result.FailureKind);
         Assert.Equal("processId is required.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetProcessDocumentSignaturesAsync_MapsSignaturesAndSignerUser()
+    {
+        string? receivedSignaturesProcessId = null;
+        string? receivedSignaturesDocumentId = null;
+        string? receivedUserHref = null;
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessDocumentSignaturesAsyncHandler = (baseUrl, token, processId, documentId, cancellationToken) =>
+            {
+                receivedSignaturesProcessId = processId;
+                receivedSignaturesDocumentId = documentId;
+                IReadOnlyList<ProcessDocumentSignature> signatures =
+                [
+                    new(
+                        "1788880332",
+                        "SIGNED",
+                        [new GestionaLink("signer-user", "https://gestiona.example/rest/users/user-1", "Luis Silva")])
+                ];
+                return Task.FromResult(new GestionaApiCallResult<IReadOnlyList<ProcessDocumentSignature>>(
+                    200,
+                    true,
+                    signatures));
+            },
+            GetUserByHrefAsyncHandler = (baseUrl, token, userHref, cancellationToken) =>
+            {
+                receivedUserHref = userHref;
+                return Task.FromResult(new GestionaApiCallResult<ProcessAssigneeUser?>(
+                    200,
+                    true,
+                    new ProcessAssigneeUser("user-1", "081847637", "Luis Silva")));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessDocumentSignaturesAsync(
+            "file-1",
+            "document-1",
+            "override-token",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("file-1", receivedSignaturesProcessId);
+        Assert.Equal("document-1", receivedSignaturesDocumentId);
+        Assert.Equal("https://gestiona.example/rest/users/user-1", receivedUserHref);
+        var signature = Assert.Single(result.Signatures!);
+        Assert.Equal(DateTimeHelpers.FormatUnixTimestamp("1788880332"), signature.DateSigned);
+        Assert.Equal("SIGNED", signature.SignatureState);
+        Assert.Equal("081847637", signature.Username);
+        Assert.Equal("Luis Silva", signature.Name);
+    }
+
+    [Fact]
+    public async Task GetProcessDocumentSignaturesAsync_WhenDocumentIdIsMissing_ReturnsValidationFailure()
+    {
+        var service = CreateService(new TestGestionaApiClient());
+
+        var result = await service.GetProcessDocumentSignaturesAsync(
+            "file-1",
+            " ",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(GetProcessDocumentsFailureKind.Validation, result.FailureKind);
+        Assert.Equal("documentId is required.", result.ErrorMessage);
     }
 
     [Fact]

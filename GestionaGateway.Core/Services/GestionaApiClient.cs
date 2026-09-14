@@ -1146,6 +1146,120 @@ public sealed class GestionaApiClient : IGestionaApiClient
     }
 
     /// <summary>
+    /// Gets signatures associated with a document in a Gestiona file.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="processId">The Gestiona file identifier that contains the document.</param>
+    /// <param name="documentId">The Gestiona document identifier whose signatures should be retrieved.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing upstream signature items.</returns>
+    public async Task<GestionaApiCallResult<IReadOnlyList<ProcessDocumentSignature>>> GetProcessDocumentSignaturesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string documentId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/documents/{Uri.EscapeDataString(documentId)}/signatures";
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+
+        _logger.LogInformation(
+            "({Method}) getting Gestiona document signatures for process {ProcessId}, document {DocumentId} via {RequestUri}",
+            nameof(GetProcessDocumentSignaturesAsync),
+            processId,
+            documentId,
+            new Uri(httpClient.BaseAddress, request.RequestUri!));
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetProcessDocumentSignaturesAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) process document signatures response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetProcessDocumentSignaturesAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed for process {ProcessId}, document {DocumentId} with status code {StatusCode}, Body={Body}",
+                nameof(GetProcessDocumentSignaturesAsync),
+                processId,
+                documentId,
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<IReadOnlyList<ProcessDocumentSignature>>((int)response.StatusCode, false, []);
+        }
+
+        var responseModel = DeserializeResponse<ProcessDocumentSignaturesResponse>(
+            responseBody,
+            nameof(GetProcessDocumentSignaturesAsync));
+
+        return new GestionaApiCallResult<IReadOnlyList<ProcessDocumentSignature>>(
+            (int)response.StatusCode,
+            true,
+            responseModel?.Content ?? []);
+    }
+
+    /// <summary>
+    /// Gets a Gestiona user by following an absolute or relative user href.
+    /// </summary>
+    /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
+    /// <param name="accessToken">The Gestiona access token sent on the request headers.</param>
+    /// <param name="userHref">The absolute or relative Gestiona user href.</param>
+    /// <param name="cancellationToken">The token used to cancel the HTTP request.</param>
+    /// <returns>The API call result containing the user when found.</returns>
+    public async Task<GestionaApiCallResult<ProcessAssigneeUser?>> GetUserByHrefAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string userHref,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var userUri = ResolveHrefUri(gestionaApiBaseUrl, userHref);
+        using var request = new HttpRequestMessage(HttpMethod.Get, userUri);
+
+        _logger.LogInformation(
+            "({Method}) getting Gestiona user via {RequestUri}",
+            nameof(GetUserByHrefAsync),
+            userUri);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetUserByHrefAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) Gestiona user response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetUserByHrefAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "({Method}) failed with status code {StatusCode}, Body={Body}",
+                nameof(GetUserByHrefAsync),
+                response.StatusCode,
+                FormatJsonForLog(responseBody));
+            return new GestionaApiCallResult<ProcessAssigneeUser?>((int)response.StatusCode, false, null);
+        }
+
+        var user = DeserializeResponse<ProcessAssigneeUser>(
+            responseBody,
+            nameof(GetUserByHrefAsync));
+
+        return new GestionaApiCallResult<ProcessAssigneeUser?>((int)response.StatusCode, true, user);
+    }
+
+    /// <summary>
     /// Gets the first Gestiona assignee user matching the provided username filter.
     /// </summary>
     /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>

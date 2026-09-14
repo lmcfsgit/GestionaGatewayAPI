@@ -206,6 +206,19 @@ public interface IGestionaApiClient
         string? documentId,
         CancellationToken cancellationToken);
 
+    Task<GestionaApiCallResult<IReadOnlyList<ProcessDocumentSignature>>> GetProcessDocumentSignaturesAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string documentId,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<ProcessAssigneeUser?>> GetUserByHrefAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string userHref,
+        CancellationToken cancellationToken);
+
     Task<GestionaApiCallResult<ProcessAssigneeUser?>> GetProcessAssigneeUserAsync(
         string gestionaApiBaseUrl,
         string accessToken,

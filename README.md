@@ -142,3 +142,14 @@ Added the activityId to each procedure object in the result array of the list ac
 ### Bug Fixs
 
 ### Improvements
+
+<center>_Version 1.8.1_</center>
+
+### Features
+
+- New endpoints:
+  - .../processes/{process_id}/documents/{document_id}/signatures - get document signatures info
+
+### Bug Fixs
+
+### Improvements

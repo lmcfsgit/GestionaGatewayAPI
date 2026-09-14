@@ -817,6 +817,120 @@ public sealed class GestionaProcessService : IGestionaProcessService
     }
 
     /// <summary>
+    /// Gets signatures for a Gestiona process document and enriches them with signer user information.
+    /// </summary>
+    /// <param name="processId">The Gestiona file id that contains the document.</param>
+    /// <param name="documentId">The Gestiona document id whose signatures should be retrieved.</param>
+    /// <param name="accessTokenOverride">The optional request-provided Gestiona access token. When absent, the configured token is used.</param>
+    /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
+    /// <returns>The process document signatures result, including signer username and name on success.</returns>
+    public async Task<GetProcessDocumentSignaturesResult> GetProcessDocumentSignaturesAsync(
+        string processId,
+        string documentId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. ProcessId={ProcessId}, DocumentId={DocumentId}",
+            nameof(GetProcessDocumentSignaturesAsync),
+            processId,
+            documentId);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return SignaturesFailure(
+                GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return SignaturesFailure(
+                GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return SignaturesFailure(
+                GetProcessDocumentsFailureKind.Validation,
+                "processId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(documentId))
+        {
+            return SignaturesFailure(
+                GetProcessDocumentsFailureKind.Validation,
+                "documentId is required.");
+        }
+
+        var signaturesResult = await _gestionaApiClient.GetProcessDocumentSignaturesAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            processId,
+            documentId,
+            cancellationToken);
+
+        if (!signaturesResult.Success)
+        {
+            var failureKind = signaturesResult.StatusCode == 404
+                ? GetProcessDocumentsFailureKind.NotFound
+                : GetProcessDocumentsFailureKind.Upstream;
+            return SignaturesFailure(
+                failureKind,
+                "Failed to get Gestiona document signatures.",
+                GetUpstreamErrorStatusCode(signaturesResult.StatusCode));
+        }
+
+        var signatures = new List<ProcessDocumentSignatureResult>();
+        foreach (var signature in signaturesResult.Value ?? [])
+        {
+            ProcessAssigneeUser? signer = null;
+            var signerHref = GetSignerUserHref(signature);
+            if (!string.IsNullOrWhiteSpace(signerHref))
+            {
+                var signerResult = await _gestionaApiClient.GetUserByHrefAsync(
+                    gestionaApiBaseUrl,
+                    accessToken,
+                    signerHref,
+                    cancellationToken);
+
+                if (!signerResult.Success)
+                {
+                    var failureKind = signerResult.StatusCode == 404
+                        ? GetProcessDocumentsFailureKind.NotFound
+                        : GetProcessDocumentsFailureKind.Upstream;
+                    return SignaturesFailure(
+                        failureKind,
+                        "Failed to get Gestiona signature user.",
+                        GetUpstreamErrorStatusCode(signerResult.StatusCode));
+                }
+
+                signer = signerResult.Value;
+            }
+
+            signatures.Add(new ProcessDocumentSignatureResult(
+                FormatUnixTimestamp(signature.Date),
+                signature.SignatureState,
+                signer?.Username,
+                signer?.Name));
+        }
+
+        return new GetProcessDocumentSignaturesResult(
+            true,
+            GetProcessDocumentsFailureKind.None,
+            null,
+            signatures,
+            null);
+    }
+
+    /// <summary>
     /// Gets the first Gestiona assignee user matching the supplied username.
     /// </summary>
     /// <param name="request">The assignee user filter request.</param>
@@ -991,6 +1105,21 @@ public sealed class GestionaProcessService : IGestionaProcessService
         int? upstreamStatusCode = null)
     {
         return new GetProcessDocumentsResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    /// <summary>
+    /// Creates a failed process document signatures result.
+    /// </summary>
+    /// <param name="failureKind">The process document signatures failure classification.</param>
+    /// <param name="errorMessage">The human-readable failure message.</param>
+    /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
+    /// <returns>A failed process document signatures result.</returns>
+    private static GetProcessDocumentSignaturesResult SignaturesFailure(
+        GetProcessDocumentsFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetProcessDocumentSignaturesResult(false, failureKind, errorMessage, null, upstreamStatusCode);
     }
 
     /// <summary>
@@ -1197,6 +1326,32 @@ public sealed class GestionaProcessService : IGestionaProcessService
         return statusCode >= 400
             ? statusCode
             : null;
+    }
+
+    /// <summary>
+    /// Gets the signer user href from a signature item.
+    /// </summary>
+    /// <param name="signature">The upstream signature item.</param>
+    /// <returns>The signer user href, or null when the signature does not contain one.</returns>
+    private static string? GetSignerUserHref(ProcessDocumentSignature signature)
+    {
+        return signature.Links?
+            .FirstOrDefault(link =>
+                string.Equals(link.Rel, "signed-user", StringComparison.Ordinal) ||
+                string.Equals(link.Rel, "signer-user", StringComparison.Ordinal))
+            ?.Href;
+    }
+
+    /// <summary>
+    /// Formats a Unix timestamp using the shared gateway date-time helper.
+    /// </summary>
+    /// <param name="unixTimestamp">The Unix timestamp value returned by Gestiona.</param>
+    /// <returns>The formatted local date-time string, or the original value when it is blank.</returns>
+    private static string? FormatUnixTimestamp(string? unixTimestamp)
+    {
+        return string.IsNullOrWhiteSpace(unixTimestamp)
+            ? unixTimestamp
+            : DateTimeHelpers.FormatUnixTimestamp(unixTimestamp);
     }
 
     /// <summary>
