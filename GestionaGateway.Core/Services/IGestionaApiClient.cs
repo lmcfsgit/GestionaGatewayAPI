@@ -19,6 +19,17 @@ public interface IGestionaApiClient
         string accessToken,
         CancellationToken cancellationToken);
 
+    Task<GestionaApiCallResult<string?>> CreateAddOnAuthorizationAsync(
+        string gestionaApiBaseUrl,
+        string addonToken,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<GestionaAddOnAuthorizationStatus?>> GetAddOnAuthorizationAsync(
+        string gestionaApiBaseUrl,
+        string addonToken,
+        string authId,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Uploads document content to a previously created Gestiona upload location.
     /// </summary>

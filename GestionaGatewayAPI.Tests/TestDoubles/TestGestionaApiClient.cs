@@ -6,6 +6,8 @@ namespace GestionaGatewayAPI.Tests.TestDoubles;
 internal sealed class TestGestionaApiClient : IGestionaApiClient
 {
     public Func<string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? CreateUploadSpaceAsyncHandler { get; init; }
+    public Func<string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? CreateAddOnAuthorizationAsyncHandler { get; init; }
+    public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<GestionaAddOnAuthorizationStatus?>>>? GetAddOnAuthorizationAsyncHandler { get; init; }
     public Func<string, string, string, byte[], CancellationToken, Task<GestionaApiCallResult>>? UploadDocumentContentAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? GetFileSelfHrefAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? GetFileIdFromProcessCodeHandler { get; init; }
@@ -43,6 +45,23 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
         CancellationToken cancellationToken)
     {
         return Invoke<GestionaApiCallResult<string?>>(CreateUploadSpaceAsyncHandler, gestionaApiBaseUrl, accessToken, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<string?>> CreateAddOnAuthorizationAsync(
+        string gestionaApiBaseUrl,
+        string addonToken,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<string?>>(CreateAddOnAuthorizationAsyncHandler, gestionaApiBaseUrl, addonToken, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<GestionaAddOnAuthorizationStatus?>> GetAddOnAuthorizationAsync(
+        string gestionaApiBaseUrl,
+        string addonToken,
+        string authId,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<GestionaAddOnAuthorizationStatus?>>(GetAddOnAuthorizationAsyncHandler, gestionaApiBaseUrl, addonToken, authId, cancellationToken);
     }
 
     public Task<GestionaApiCallResult> UploadDocumentContentAsync(

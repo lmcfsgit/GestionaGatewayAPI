@@ -6,4 +6,5 @@ public sealed class GestionaOptions
 
     public string? GestionaApiBaseUrl { get; init; }
     public string? AccessToken { get; init; }
+    public string? AddonToken { get; init; }
 }

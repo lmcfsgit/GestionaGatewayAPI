@@ -148,7 +148,19 @@ Added the activityId to each procedure object in the result array of the list ac
 ### Features
 
 - New endpoints:
-  - .../processes/{process_id}/documents/{document_id}/signatures - get document signatures info
+  - GET .../processes/{process_id}/documents/{document_id}/signatures - get document signatures info
+
+### Bug Fixs
+
+### Improvements
+
+<center>_Version 1.9.0_</center>
+
+### Features
+
+- New endpoints:
+  - POST .../addon/authorizations - creates a new authorization
+  - GET .../addon/authorizations - verifies authorization state
 
 ### Bug Fixs
 

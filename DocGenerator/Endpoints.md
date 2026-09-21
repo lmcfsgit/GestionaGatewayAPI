@@ -1,6 +1,6 @@
 # Gestiona Gateway API Documentation
 
-<center>Versão 1.8.0</center>
+<center>Versão 1.9.0</center>
 
 ## Index
 
@@ -32,6 +32,8 @@
 - [SendQueueConnectorResponseRequest](#sendqueueconnectorresponserequest)
 - [QueueConnectorResponseResult](#queueconnectorresponseresult)
 - [QueueError](#queueerror)
+- [AddOnAuthorizationResult](#addonauthorizationresult)
+- [AddOnAuthorizationStatusResult](#addonauthorizationstatusresult)
 - [Download Success Output](#download-success-output)
 
 ### Shared
@@ -64,8 +66,45 @@
 - [22. GET `/queues/connectors/{connector_name}`](#22-get-queuesconnectorsconnector_name)
 - [23. GET `/queues/connectors/{connector_name}/{message_id}`](#23-get-queuesconnectorsconnector_namemessage_id)
 - [24. POST `/queues/connectors/{connector_name}/{message_id}`](#24-post-queuesconnectorsconnector_namemessage_id)
+- [25. POST `/addon/authorizations`](#25-post-addonauthorizations)
+- [26. GET `/addon/authorizations/{auth_id}`](#26-get-addonauthorizationsauth_id)
 
 ## Models
+
+### AddOnAuthorizationResult
+
+Returned inside `GatewayResponse.result` after creating an add-on authorization.
+
+```json
+{
+  "authId": "string"
+}
+```
+
+### AddOnAuthorizationStatusResult
+
+Returned inside `GatewayResponse.result` when checking an add-on authorization.
+
+Pending authorization:
+
+```json
+{
+  "authorized": false,
+  "authorizeUrl": "string"
+}
+```
+
+Authorized:
+
+```json
+{
+  "authorized": true,
+  "authorizedInfo": {
+    "userId": "string",
+    "accessToken": "string"
+  }
+}
+```
 
 ### UploadDocumentRequest
 
@@ -2025,6 +2064,7 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - If `connector_name` is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved variable such as `{{connector_name}}`, the endpoint returns HTTP `400`.
 - The active subscription name must match `connectors#{connector_name}`.
+
 - Each upstream queue message `payload.target` is returned as `message_id`.
 - Each upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
 
@@ -2135,8 +2175,8 @@ Before sending the response, the gateway verifies that the connector exists and 
 
 ```json
 {
-  "result_success": "FALSE",
-  "message": "Mensaje de respuesta al conector"
+  "result_success": "TRUE",
+  "message": "Response message to the connector"
 }
 ```
 
@@ -2206,3 +2246,103 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - If `result_success` is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved variable such as `{{connector_name}}` or `{{message_id}}`, the endpoint returns HTTP `400`.
 - The active subscription name must match `connectors#{connector_name}`.
+
+### 25. POST `/addon/authorizations`
+
+Creates a Gestiona add-on authorization request.
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `POST /addon/authorizations`
+   - Sends `X-Gestiona-Addon-Token` using `Gestiona:AddonToken`.
+   - Reads the authorization id from the last segment of the upstream `Location` header.
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: `AddOnAuthorizationResult`
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "authId": "authorization-id"
+  }
+}
+```
+
+#### Error response
+
+- HTTP `500`, `502`, or propagated upstream status code
+- Missing configuration or an invalid/missing upstream `Location` header produces an error `GatewayResponse`.
+
+### 26. GET `/addon/authorizations/{auth_id}`
+
+Gets the current state of a Gestiona add-on authorization.
+
+#### Route parameters
+
+- `auth_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /addon/authorizations/{auth_id}`
+   - Sends `X-Gestiona-Addon-Token` using `Gestiona:AddonToken`.
+   - Upstream HTTP `401` is treated as an expected pending state; its `Location` header becomes `authorizeUrl`.
+   - Upstream HTTP `200` maps `user_id` and `access_token` into `authorizedInfo`.
+
+#### Pending response
+
+- HTTP `200 OK`
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "authorized": false,
+    "authorizeUrl": "https://gestiona.example/authorize/authorization-id"
+  }
+}
+```
+
+#### Authorized response
+
+- HTTP `200 OK`
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "authorized": true,
+    "authorizedInfo": {
+      "userId": "user-id",
+      "accessToken": "access-token"
+    }
+  }
+}
+```
+
+#### Error response
+
+- HTTP `500`, `502`, or propagated upstream status code
+- A pending response without `Location`, or an authorized response without `user_id` or `access_token`, produces HTTP `502`.
