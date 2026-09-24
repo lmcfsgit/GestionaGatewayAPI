@@ -1,167 +1,101 @@
 # Gestiona Gateway API
 
-<center>_Version 1.1.1_</center>
+ASP.NET Core gateway for the Gestiona API. It exposes endpoints for processes,
+documents, thirds, activities, queue connectors, and add-on authorizations while
+keeping Gestiona-specific HTTP and response handling in a reusable core library.
 
-### Features
+The current application version is **1.9.0**. See [CHANGELOG.md](CHANGELOG.md) for
+the release history.
 
-- Middleware for logging request client information
-- New endpoints:
-  - GET .../processes/{process_id}/thirds
-  - GET .../processes/thirds?process_number=<proces_number value>
-  - GET .../thirds/{third_id}
-  - GET .../thirds?nif=<nif>
+### Requirements
 
-### Bug Fixs
+- .NET 8 SDK. The repository's `global.json` selects SDK 8.0.425 or a compatible
+  later patch.
+- Access to a Gestiona API instance and the required access tokens.
 
-### Improvements
+### Project structure
 
-- The log of the request body doesn't print the Content anymore, it only informs that it's present.
+- `GestionaGatewayAPI.csproj` - ASP.NET Core API, controllers, middleware, and
+  application startup.
+- `GestionaGateway.Core/` - Gestiona client, service interfaces, implementations,
+  configuration, and shared models.
+- `GestionaGatewayAPI.Tests/` - xUnit test suite.
 
-<center>_Version 1.2.1_</center>
+### Configuration
 
-### Features
+The API reads Gestiona settings from the `Gestiona` configuration section:
 
-- Support for X-User-Access-Token header.
-  If it's present uses this token for the X-Gestiona-Access-Token else use the environment variable Gestiona\_\_AccessToken
+| Setting | Environment variable | Purpose |
+| --- | --- | --- |
+| `Gestiona:GestionaApiBaseUrl` | `Gestiona__GestionaApiBaseUrl` | Base URL of the Gestiona API. |
+| `Gestiona:AccessToken` | `Gestiona__AccessToken` | Default Gestiona access token. |
+| `Gestiona:AddonToken` | `Gestiona__AddonToken` | Token used by add-on authorization operations. |
 
-### Bug Fixs
+Use environment variables for secrets and do not commit access tokens. Requests
+that support `X-User-Access-Token` use that header in preference to the
+configured default access token.
 
-### Improvements
+### Build and run
 
-- Added swagger support to the API: .../swagger
+Restore and build the solution:
 
-<center>_Version 1.3.1_</center>
+```powershell
+dotnet restore GestionaGatewayAPI.sln
+dotnet build GestionaGatewayAPI.sln
+```
 
-### Features
+Run the API locally:
 
-- New endpoint for resolving process id form process number: .../processes?process_number=<process number>
+```powershell
+dotnet run --project GestionaGatewayAPI.csproj
+```
 
-### Bug Fixs
+The development profiles listen on `http://localhost:5123` and
+`https://localhost:7217`. Swagger UI is available in the Development environment
+at `/swagger`.
 
-### Improvements
+Example requests can be run from `GestionaGatewayAPI.http` in an editor with HTTP
+file support.
 
-- Added log debug information for the request body sent to Gestiona API
-- Api version is read from .csproj instead of appsettings.json
-- Added Zone (Concelho) to third address
-- Added ParishCode (Freguesia) obtained from last href segment of the link where ref="parish"
-- Added second_surname from Gestiona to the third model
+### Tests
 
-<center>_Version 1.3.2_</center>
+Run the complete test suite with:
 
-### Features
+```powershell
+dotnet test GestionaGatewayAPI.sln
+```
 
-### Bug Fixs
+### Logging
 
-- When testing with Postman the header X-User-Access-Token was sent with unresolved variable = {{X-User-Access-Token}}
+The application uses Serilog for console and rolling file logging. Local log
+files are written under `logs/`, which is excluded from Git.
 
-### Improvements
+### Publishing
 
-- Logs the masked authentication token in debug mode
+The PowerShell publishing script builds the API in Release configuration and
+writes the deployable output to `C:\publish\GestionaGatewayAPI`:
 
-<center>_Version 1.4.0_</center>
+```powershell
+.\publish.ps1
+```
 
-### Features
+Pass `-Configuration Debug` when a Debug publish is required.
 
-- New endpoints:
-  - GET .../processes/{process_id}/documents: retrieves all documents from process
-  - GET .../processes/{process_id}/documents/{document_id}: retrieves all documents from folder
+#### IIS installation
 
-### Bug Fixs
+Compress the published application files into a ZIP, then run the installer from
+an elevated PowerShell session:
 
-### Improvements
+```powershell
+.\Install-IIS.ps1 `
+    -ZipPath C:\publish\GestionaGatewayAPI.zip `
+    -Port 8080 `
+    -InstallPath C:\inetpub\GestionaGatewayAPI `
+    -SiteName GestionaGatewayAPI
+```
 
-<center>_Version 1.5.0_</center>
-
-### Features
-
-- New endpoints:
-  - POST .../processes: creates a Gestiona process
-
-### Bug Fixs
-
-### Improvements
-
-<center>_Version 1.6.0_</center>
-
-### Features
-
-- New endpoints:
-  - GET .../processes/assignees/users: get assignable user
-  - GET .../processes/assignees/groups: get assignables groups
-  - GET .../activities: gets all activities
-  - GET .../activities/{activity_id}/procedures: gets all procedures from activity
-
-### Bug Fixs
-
-### Improvements
-
-If the created process has selectables titles, select the first and use it in the open file endpoint request on the selectable_title property
-
-<center>_Version 1.6.1_</center>
-
-### Features
-
-### Bug Fixs
-
-### Improvements
-
-Added the activityId to each procedure object in the result array of the list activity procedures
-
-<center>_Version 1.6.2_</center>
-
-### Features
-
-### Bug Fixs
-
-### Improvements
-
-.../processes/assignees/users?username=123456789, now accepts the username as a query parameter. This takes precedence over json body.
-
-<center>_Version 1.7.0_</center>
-
-### Features
-
-- New endpoints:
-  - GET .../queues/connectors/{connector_name}/{message_id}: get document signed info / messag_id info
-  - POST .../queues/connectors/{connector_name}/{message_id}: processes message_id
-  - GET .../queues/connectors/{connector_name}: get messages for connector_name
-
-### Bug Fixs
-
-### Improvements
-
-<center>_Version 1.8.0_</center>
-
-### Features
-
-- New endpoints:
-  - POST .../processes/related: create a relation between processes
-  - DELETE .../processes/{process_id}/{related_process_id}: delete relation between processes
-  - GET .../processes/{process_id}/related - gets related processes
-
-### Bug Fixs
-
-### Improvements
-
-<center>_Version 1.8.1_</center>
-
-### Features
-
-- New endpoints:
-  - GET .../processes/{process_id}/documents/{document_id}/signatures - get document signatures info
-
-### Bug Fixs
-
-### Improvements
-
-<center>_Version 1.9.0_</center>
-
-### Features
-
-- New endpoints:
-  - POST .../addon/authorizations - creates a new authorization
-  - GET .../addon/authorizations - verifies authorization state
-
-### Bug Fixs
-
-### Improvements
+The optional `SiteName` parameter defaults to `GestionaGatewayAPI`. Use a
+different site name, port, and installation path to run another installation
+alongside it. The script creates a matching website and application pool, adds an
+HTTP binding for the requested port, and grants the application pool permission
+to write application logs.

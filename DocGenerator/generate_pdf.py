@@ -1,6 +1,6 @@
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Preformatted,
-    KeepTogether, CondPageBreak, PageBreak, Flowable
+    KeepTogether, CondPageBreak, PageBreak, Flowable, Table, TableStyle
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.pagesizes import letter
@@ -126,6 +126,22 @@ code_style = ParagraphStyle(
     borderPadding=6,
 )
 
+table_header_style = ParagraphStyle(
+    'TableHeaderStyle',
+    parent=body_style,
+    fontName='Helvetica-Bold',
+    fontSize=8.5,
+    leading=10.5,
+    textColor=colors.white
+)
+
+table_cell_style = ParagraphStyle(
+    'TableCellStyle',
+    parent=body_style,
+    fontSize=8.2,
+    leading=10.2
+)
+
 pdf_path = (
     (base_path / sys.argv[2]).resolve()
     if len(sys.argv) == 3
@@ -216,6 +232,9 @@ in_code = False
 code_buffer = []
 first_h2_seen = False
 current_bullet_lines = []
+current_bullet_text = "•"
+current_table_lines = []
+current_paragraph_lines = []
 linked_anchors = {
     href[1:]
     for href in re.findall(r"\[[^\]]+\]\((#[^)]+)\)", markdown_text)
@@ -308,7 +327,7 @@ def with_anchor(text):
 
 
 def flush_bullet():
-    global current_bullet_lines
+    global current_bullet_lines, current_bullet_text
     if not current_bullet_lines:
         return
 
@@ -316,9 +335,113 @@ def flush_bullet():
     story.append(Paragraph(
         format_inline_markdown(bullet_text),
         bullet_style,
-        bulletText="•"
+        bulletText=current_bullet_text
     ))
     current_bullet_lines = []
+    current_bullet_text = "•"
+
+
+def split_table_row(line):
+    row = line.strip()
+    if row.startswith("|"):
+        row = row[1:]
+    if row.endswith("|") and not row.endswith(r"\|"):
+        row = row[:-1]
+
+    return [
+        cell.replace(r"\|", "|").strip()
+        for cell in re.split(r"(?<!\\)\|", row)
+    ]
+
+
+def is_table_separator(line):
+    cells = split_table_row(line)
+    return bool(cells) and all(
+        re.fullmatch(r":?-{3,}:?", cell) is not None
+        for cell in cells
+    )
+
+
+def get_table_column_widths(rows):
+    available_width = letter[0] - doc.leftMargin - doc.rightMargin
+    column_count = max(len(row) for row in rows)
+    weights = []
+
+    for column_index in range(column_count):
+        longest_cell = max(
+            len(row[column_index]) if column_index < len(row) else 0
+            for row in rows
+        )
+        weights.append(max(8, min(longest_cell, 40)))
+
+    total_weight = sum(weights)
+    return [available_width * weight / total_weight for weight in weights]
+
+
+def flush_table():
+    global current_table_lines
+    if not current_table_lines:
+        return
+
+    if len(current_table_lines) < 2 or not is_table_separator(
+        current_table_lines[1]
+    ):
+        for table_line in current_table_lines:
+            story.append(Paragraph(
+                format_inline_markdown(table_line),
+                body_style
+            ))
+        current_table_lines = []
+        return
+
+    rows = [split_table_row(current_table_lines[0])]
+    rows.extend(split_table_row(line) for line in current_table_lines[2:])
+    column_count = max(len(row) for row in rows)
+
+    normalized_rows = [
+        row + [""] * (column_count - len(row))
+        for row in rows
+    ]
+    table_data = [
+        [
+            Paragraph(
+                format_inline_markdown(cell),
+                table_header_style if row_index == 0 else table_cell_style
+            )
+            for cell in row
+        ]
+        for row_index, row in enumerate(normalized_rows)
+    ]
+
+    table_commands = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F77B4")),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#B8C2CC")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]
+
+    for row_index in range(1, len(table_data)):
+        if row_index % 2 == 0:
+            table_commands.append((
+                "BACKGROUND",
+                (0, row_index),
+                (-1, row_index),
+                colors.HexColor("#F4F7FA")
+            ))
+
+    story.append(Spacer(1, 3))
+    story.append(Table(
+        table_data,
+        colWidths=get_table_column_widths(normalized_rows),
+        repeatRows=1,
+        hAlign="LEFT",
+        style=TableStyle(table_commands)
+    ))
+    story.append(Spacer(1, 6))
+    current_table_lines = []
 
 
 def get_centered_text(text):
@@ -330,10 +453,64 @@ def get_fully_bold_text(text):
     match = re.fullmatch(r"(?:\*\*|__)(.+?)(?:\*\*|__)", text)
     return match.group(1).strip() if match else None
 
+
+def flush_paragraph():
+    global current_paragraph_lines
+    if not current_paragraph_lines:
+        return
+
+    paragraph_text = " ".join(
+        line.strip()
+        for line in current_paragraph_lines
+    )
+    centered_text = get_centered_text(paragraph_text)
+
+    if centered_text is not None:
+        centered_bold_text = get_fully_bold_text(centered_text)
+        if centered_bold_text is not None:
+            story.append(Paragraph(
+                format_inline_markdown(centered_bold_text),
+                centered_bold_body_style
+            ))
+        else:
+            story.append(Paragraph(
+                format_inline_markdown(centered_text),
+                centered_body_style
+            ))
+    else:
+        fully_bold_text = get_fully_bold_text(paragraph_text)
+        if fully_bold_text is not None:
+            story.append(Paragraph(
+                format_inline_markdown(fully_bold_text),
+                bold_body_style
+            ))
+        else:
+            story.append(Paragraph(
+                format_inline_markdown(paragraph_text),
+                body_style
+            ))
+
+    current_paragraph_lines = []
+
+
 for line in lines:
     stripped = line.strip()
+    ordered_list_match = re.match(r"^(\d+)\.\s+(.+)$", stripped)
+
+    if (
+        not in_code
+        and stripped.startswith("|")
+        and stripped.endswith("|")
+    ):
+        flush_paragraph()
+        flush_bullet()
+        current_table_lines.append(stripped)
+        continue
+
+    flush_table()
 
     if stripped.startswith("```"):
+        flush_paragraph()
         flush_bullet()
         if not in_code:
             in_code = True
@@ -359,10 +536,12 @@ for line in lines:
         continue
 
     if stripped.startswith("# "):
+        flush_paragraph()
         flush_bullet()
         story.append(Paragraph(with_anchor(stripped[2:]), title_style))
 
     elif stripped.startswith("## "):
+        flush_paragraph()
         flush_bullet()
         if first_h2_seen:
             story.append(PageBreak())
@@ -370,51 +549,42 @@ for line in lines:
         story.append(Paragraph(with_anchor(stripped[3:]), h2_style))
 
     elif stripped.startswith("### "):
+        flush_paragraph()
         flush_bullet()
         story.append(Paragraph(with_anchor(stripped[4:]), h3_style))
 
     elif stripped.startswith("#### "):
+        flush_paragraph()
         flush_bullet()
         story.append(Paragraph(with_anchor(stripped[5:]), h4_style))
 
     elif stripped.startswith("- "):
+        flush_paragraph()
         flush_bullet()
+        current_bullet_text = "•"
         current_bullet_lines.append(stripped[2:])
+
+    elif ordered_list_match:
+        flush_paragraph()
+        flush_bullet()
+        current_bullet_text = f"{ordered_list_match.group(1)}."
+        current_bullet_lines.append(ordered_list_match.group(2))
 
     elif current_bullet_lines and line.startswith("  ") and stripped:
         current_bullet_lines.append(stripped)
 
     elif stripped == "":
+        flush_paragraph()
         flush_bullet()
         story.append(Spacer(1, 3))
 
     else:
         flush_bullet()
-        centered_text = get_centered_text(stripped)
-        if centered_text is not None:
-            centered_bold_text = get_fully_bold_text(centered_text)
-            if centered_bold_text is not None:
-                story.append(Paragraph(
-                    format_inline_markdown(centered_bold_text),
-                    centered_bold_body_style
-                ))
-                continue
+        current_paragraph_lines.append(stripped)
 
-            story.append(Paragraph(
-                format_inline_markdown(centered_text),
-                centered_body_style
-            ))
-        else:
-            fully_bold_text = get_fully_bold_text(stripped)
-            if fully_bold_text is not None:
-                story.append(Paragraph(
-                    format_inline_markdown(fully_bold_text),
-                    bold_body_style
-                ))
-            else:
-                story.append(Paragraph(format_inline_markdown(line), body_style))
-
+flush_paragraph()
 flush_bullet()
+flush_table()
 
 doc.build(story, canvasmaker=NumberedCanvas)
 

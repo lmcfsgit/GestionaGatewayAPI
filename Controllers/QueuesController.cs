@@ -3,6 +3,7 @@ using GestionaGateway.Core.Models;
 using GestionaGateway.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using System.Text.Json;
 
 namespace GestionaGatewayAPI.Controllers;
 
@@ -15,6 +16,7 @@ public sealed class QueuesController : ControllerBase
 {
     private const int NoActiveSubscriptionCode = 1001;
     private const string ConnectorResponseContentType = "application/vnd.gestiona.connector-response+json";
+    private static readonly JsonSerializerOptions RequestJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IGestionaQueueService _gestionaQueueService;
     private readonly ILogger<QueuesController> _logger;
@@ -203,7 +205,6 @@ public sealed class QueuesController : ControllerBase
     /// </summary>
     /// <param name="connectorName">The connector name associated with the queued message.</param>
     /// <param name="messageId">The queued message identifier.</param>
-    /// <param name="request">The connector response payload.</param>
     /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>A gateway response envelope confirming the sent response, or an error payload.</returns>
@@ -212,10 +213,45 @@ public sealed class QueuesController : ControllerBase
     public async Task<ActionResult<GatewayResponse>> SendConnectorResponse(
         [FromRoute(Name = "connector_name")] string connectorName,
         [FromRoute(Name = "message_id")] string messageId,
-        [FromBody] SendQueueConnectorResponseRequest? request,
         [FromQuery(Name = "operationId")] string? operationId,
         CancellationToken cancellationToken)
     {
+        SendQueueConnectorResponseRequest? request;
+        string requestBody;
+
+        using (var reader = new StreamReader(Request.Body))
+        {
+            requestBody = await reader.ReadToEndAsync(cancellationToken);
+        }
+
+        try
+        {
+            request = JsonSerializer.Deserialize<SendQueueConnectorResponseRequest>(
+                requestBody,
+                RequestJsonOptions);
+        }
+        catch (JsonException exception)
+        {
+            var charset = Request.GetTypedHeaders().ContentType?.Charset.Value;
+
+            _logger.LogWarning(
+                exception,
+                "{Method} received invalid JSON body {RequestBody} at {JsonPath} with content type {ContentType}, charset {Charset}, operationId {OperationId} and traceId {TraceId}",
+                nameof(SendConnectorResponse),
+                requestBody,
+                exception.Path,
+                Request.ContentType,
+                charset ?? "not specified",
+                operationId,
+                HttpContext.TraceIdentifier);
+
+            return CreateQueueErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                QueueFailureKind.Validation,
+                $"Invalid JSON request body at {exception.Path ?? "the root value"}.");
+        }
+
         _logger.LogInformation(
             "{Method} received queue connector response for connector {ConnectorName}, message {MessageId} with operationId {OperationId}",
             nameof(SendConnectorResponse),

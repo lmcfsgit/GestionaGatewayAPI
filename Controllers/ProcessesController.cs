@@ -20,6 +20,7 @@ public sealed class ProcessesController : ControllerBase
         WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
+    private static readonly JsonSerializerOptions RequestJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IConfiguration _configuration;
     private readonly IGestionaProcessService _gestionaProcessService;
@@ -44,16 +45,45 @@ public sealed class ProcessesController : ControllerBase
     /// <summary>
     /// Creates a new Gestiona process from the provided activity, procedure, assignee user, group, and subject.
     /// </summary>
-    /// <param name="request">The process creation request body.</param>
     /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>A response envelope containing the created process on success, or an error payload when creation fails.</returns>
     [HttpPost]
     public async Task<ActionResult<GatewayResponse>> CreateProcess(
-        [FromBody] CreateProcessRequest request,
         [FromQuery(Name = "operationId")] string? operationId,
         CancellationToken cancellationToken)
     {
+        var (request, deserializationException) =
+            await DeserializeRequestBody<CreateProcessRequest>(
+                nameof(CreateProcess),
+                operationId,
+                cancellationToken,
+                logRawBytes: false);
+
+        if (deserializationException is not null)
+        {
+            return CreateProcessCreationErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                CreateProcessFailureKind.Validation,
+                GetInvalidJsonMessage(deserializationException));
+        }
+
+        if (request is null)
+        {
+            _logger.LogWarning(
+                "{Method} received an empty JSON request with operationId {OperationId} and traceId {TraceId}",
+                nameof(CreateProcess),
+                operationId,
+                HttpContext.TraceIdentifier);
+
+            return CreateProcessCreationErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                CreateProcessFailureKind.Validation,
+                "The request body is required.");
+        }
+
         _logger.LogInformation(
             "{Method} received process creation request for activity {ActivityId}, procedure {ProcedureId} with operationId {OperationId}",
             nameof(CreateProcess),
@@ -94,16 +124,26 @@ public sealed class ProcessesController : ControllerBase
     /// <summary>
     /// Relates two Gestiona process files.
     /// </summary>
-    /// <param name="request">The related processes request body.</param>
     /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>A response envelope containing the original request body on success, or an error payload when the relation fails.</returns>
     [HttpPost("related")]
     public async Task<ActionResult<GatewayResponse>> RelateProcesses(
-        [FromBody] RelatedProcessesRequest? request,
         [FromQuery(Name = "operationId")] string? operationId,
         CancellationToken cancellationToken)
     {
+        var (request, deserializationException) =
+            await DeserializeRequestBody<RelatedProcessesRequest>(nameof(RelateProcesses), operationId, cancellationToken);
+
+        if (deserializationException is not null)
+        {
+            return CreateProcessErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessFailureKind.Validation,
+                GetInvalidJsonMessage(deserializationException));
+        }
+
         _logger.LogInformation(
             "{Method} received related processes request for {Id1}/{Id2} with operationId {OperationId}",
             nameof(RelateProcesses),
@@ -901,7 +941,6 @@ public sealed class ProcessesController : ControllerBase
     /// Creates a document by resolving the target Gestiona file from the provided process number.
     /// </summary>
     /// <param name="processNumber">The external process number used to resolve the Gestiona file identifier.</param>
-    /// <param name="request">The upload request containing the document metadata and source information.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>
     /// An <see cref="GatewayResponse"/> containing the created document information on success,
@@ -910,9 +949,29 @@ public sealed class ProcessesController : ControllerBase
     [HttpPost("documents")]
     public async Task<ActionResult<GatewayResponse>> Upload(
         [FromQuery(Name = "process_number")] string processNumber,
-        [FromBody] UploadDocumentRequest request,
         CancellationToken cancellationToken)
     {
+        var (request, deserializationException) =
+            await DeserializeRequestBody<UploadDocumentRequest>(nameof(Upload), null, cancellationToken);
+
+        if (deserializationException is not null)
+        {
+            return CreateErrorResponse(
+                null,
+                StatusCodes.Status400BadRequest,
+                CreateDocumentInProcessFailureKind.Validation,
+                GetInvalidJsonMessage(deserializationException));
+        }
+
+        if (request is null)
+        {
+            return CreateErrorResponse(
+                null,
+                StatusCodes.Status400BadRequest,
+                CreateDocumentInProcessFailureKind.Validation,
+                "The request body is required.");
+        }
+
         LogUploadRequest(
             LogLevel.Information,
             nameof(Upload),
@@ -942,7 +1001,6 @@ public sealed class ProcessesController : ControllerBase
     /// </summary>
     /// <param name="folderId">The Gestiona folder identifier that will receive the new document.</param>
     /// <param name="processNumber">The external process number used to resolve the Gestiona file identifier.</param>
-    /// <param name="request">The upload request containing the document metadata and source information.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>
     /// An <see cref="GatewayResponse"/> containing the created document information on success,
@@ -952,9 +1010,29 @@ public sealed class ProcessesController : ControllerBase
     public async Task<ActionResult<GatewayResponse>> UploadToResolvedFolder(
         [FromRoute(Name = "folder_id")] string folderId,
         [FromQuery(Name = "process_number")] string processNumber,
-        [FromBody] UploadDocumentRequest request,
         CancellationToken cancellationToken)
     {
+        var (request, deserializationException) =
+            await DeserializeRequestBody<UploadDocumentRequest>(nameof(UploadToResolvedFolder), null, cancellationToken);
+
+        if (deserializationException is not null)
+        {
+            return CreateErrorResponse(
+                null,
+                StatusCodes.Status400BadRequest,
+                CreateDocumentInProcessFailureKind.Validation,
+                GetInvalidJsonMessage(deserializationException));
+        }
+
+        if (request is null)
+        {
+            return CreateErrorResponse(
+                null,
+                StatusCodes.Status400BadRequest,
+                CreateDocumentInProcessFailureKind.Validation,
+                "The request body is required.");
+        }
+
         LogUploadRequest(
             LogLevel.Information,
             nameof(UploadToResolvedFolder),
@@ -1002,7 +1080,6 @@ public sealed class ProcessesController : ControllerBase
     /// Creates a document directly in the Gestiona file identified by the route parameter.
     /// </summary>
     /// <param name="processId">The Gestiona file identifier that will receive the new document.</param>
-    /// <param name="request">The upload request containing the document metadata and source information.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>
     /// An <see cref="GatewayResponse"/> containing the created document information on success,
@@ -1011,9 +1088,29 @@ public sealed class ProcessesController : ControllerBase
     [HttpPost("{process_id}/documents")]
     public async Task<ActionResult<GatewayResponse>> UploadToFile(
         [FromRoute(Name = "process_id")] string processId,
-        [FromBody] UploadDocumentRequest request,
         CancellationToken cancellationToken)
     {
+        var (request, deserializationException) =
+            await DeserializeRequestBody<UploadDocumentRequest>(nameof(UploadToFile), null, cancellationToken);
+
+        if (deserializationException is not null)
+        {
+            return CreateErrorResponse(
+                null,
+                StatusCodes.Status400BadRequest,
+                CreateDocumentInProcessFailureKind.Validation,
+                GetInvalidJsonMessage(deserializationException));
+        }
+
+        if (request is null)
+        {
+            return CreateErrorResponse(
+                null,
+                StatusCodes.Status400BadRequest,
+                CreateDocumentInProcessFailureKind.Validation,
+                "The request body is required.");
+        }
+
         LogUploadRequest(
             LogLevel.Debug,
             nameof(UploadToFile),
@@ -1052,7 +1149,6 @@ public sealed class ProcessesController : ControllerBase
     /// </summary>
     /// <param name="processId">The Gestiona file identifier that contains the target folder.</param>
     /// <param name="folderId">The Gestiona folder identifier that will receive the new document.</param>
-    /// <param name="request">The upload request containing the document metadata and source information.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>
     /// An <see cref="GatewayResponse"/> containing the created document information on success,
@@ -1062,9 +1158,29 @@ public sealed class ProcessesController : ControllerBase
     public async Task<ActionResult<GatewayResponse>> UploadToFolder(
         [FromRoute(Name = "process_id")] string processId,
         [FromRoute(Name = "folder_id")] string folderId,
-        [FromBody] UploadDocumentRequest request,
         CancellationToken cancellationToken)
     {
+        var (request, deserializationException) =
+            await DeserializeRequestBody<UploadDocumentRequest>(nameof(UploadToFolder), null, cancellationToken);
+
+        if (deserializationException is not null)
+        {
+            return CreateErrorResponse(
+                null,
+                StatusCodes.Status400BadRequest,
+                CreateDocumentInProcessFailureKind.Validation,
+                GetInvalidJsonMessage(deserializationException));
+        }
+
+        if (request is null)
+        {
+            return CreateErrorResponse(
+                null,
+                StatusCodes.Status400BadRequest,
+                CreateDocumentInProcessFailureKind.Validation,
+                "The request body is required.");
+        }
+
         LogUploadRequest(
             LogLevel.Debug,
             nameof(UploadToFolder),
@@ -1178,6 +1294,85 @@ public sealed class ProcessesController : ControllerBase
                 result.Document.CreationDate,
                 result.Document.ModificationDate)));
     }
+
+    /// <summary>
+    /// Reads and deserializes the current request body, logging the raw body only when JSON parsing fails.
+    /// </summary>
+    /// <typeparam name="TRequest">The request model type.</typeparam>
+    /// <param name="methodName">The controller action name used in log entries.</param>
+    /// <param name="operationId">The optional operation identifier associated with the request.</param>
+    /// <param name="cancellationToken">The token used to cancel body reading.</param>
+    /// <param name="logRawBytes">Indicates whether the raw request bytes should always be logged as hexadecimal.</param>
+    /// <returns>The deserialized request and any JSON exception that occurred.</returns>
+    private async Task<(TRequest? Request, JsonException? Exception)> DeserializeRequestBody<TRequest>(
+        string methodName,
+        string? operationId,
+        CancellationToken cancellationToken,
+        bool logRawBytes = false)
+        where TRequest : class
+    {
+        byte[] requestBytes;
+
+        using (var buffer = new MemoryStream())
+        {
+            await Request.Body.CopyToAsync(buffer, cancellationToken);
+            requestBytes = buffer.ToArray();
+        }
+
+        if (logRawBytes)
+        {
+            _logger.LogInformation(
+                "{Method} received {RequestBodyLength} raw request bytes {RequestBodyHex} with content type {ContentType}, operationId {OperationId} and traceId {TraceId}",
+                methodName,
+                requestBytes.Length,
+                Convert.ToHexString(requestBytes),
+                Request.ContentType,
+                operationId,
+                HttpContext.TraceIdentifier);
+        }
+
+        string requestBody;
+        using (var reader = new StreamReader(new MemoryStream(requestBytes), detectEncodingFromByteOrderMarks: true))
+        {
+            requestBody = await reader.ReadToEndAsync(cancellationToken);
+        }
+
+        try
+        {
+            var deserializedRequest = JsonSerializer.Deserialize<TRequest>(requestBody, RequestJsonOptions);
+
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug(
+                    "{Method} deserialized request body:{NewLine}{RequestBody}",
+                    methodName,
+                    Environment.NewLine,
+                    JsonSerializer.Serialize(deserializedRequest, LogJsonOptions));
+            }
+
+            return (deserializedRequest, null);
+        }
+        catch (JsonException exception)
+        {
+            var charset = Request.GetTypedHeaders().ContentType?.Charset.Value;
+
+            _logger.LogWarning(
+                exception,
+                "{Method} received invalid JSON body {RequestBody} at {JsonPath} with content type {ContentType}, charset {Charset}, operationId {OperationId} and traceId {TraceId}",
+                methodName,
+                requestBody,
+                exception.Path,
+                Request.ContentType,
+                charset ?? "not specified",
+                operationId,
+                HttpContext.TraceIdentifier);
+
+            return (null, exception);
+        }
+    }
+
+    private static string GetInvalidJsonMessage(JsonException exception) =>
+        $"Invalid JSON request body at {exception.Path ?? "the root value"}.";
 
     /// <summary>
     /// Creates a standardized upload error response payload.

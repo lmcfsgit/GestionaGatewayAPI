@@ -12,6 +12,7 @@ $publishPath = "C:\publish\GestionaGatewayAPI"
 $publishedCoreArtifactsPath = Join-Path $publishPath "GestionaGateway.Core"
 $publishedTestArtifactsPath = Join-Path $publishPath "GestionaGatewayAPI.Tests"
 $publishedArtifactsPath = Join-Path $publishPath "artifacts"
+$developmentSettingsPath = Join-Path $publishPath "appsettings.Development.json"
 $publishBuildPath = Join-Path $PSScriptRoot ".publish-build"
 
 if (-not (Test-Path -LiteralPath $apiProjectPath)) {
@@ -45,6 +46,10 @@ dotnet publish $apiProjectPath `
 
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
+}
+
+if (Test-Path -LiteralPath $developmentSettingsPath) {
+    Remove-Item -LiteralPath $developmentSettingsPath -Force
 }
 
 if (Test-Path -LiteralPath $publishedCoreArtifactsPath) {
