@@ -827,41 +827,18 @@ public sealed class GestionaApiClient : IGestionaApiClient
         httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
         httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, Catalog2015ProceduresRoute);
-
         _logger.LogInformation(
             "({Method}) getting Gestiona activities via {RequestUri}",
             nameof(GetActivitiesAsync),
-            new Uri(httpClient.BaseAddress, request.RequestUri!));
+            new Uri(httpClient.BaseAddress, Catalog2015ProceduresRoute));
 
-        using var response = await httpClient.SendAsync(request, cancellationToken);
-        LogDeprecatedHeader(response, nameof(GetActivitiesAsync));
-        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
-
-        _logger.LogDebug(
-            "({Method}) activities response: StatusCode={StatusCode}, Body={Body}",
+        return await GetPagedContentAsync<ActivitiesResponse, Activity>(
+            httpClient,
+            Catalog2015ProceduresRoute,
             nameof(GetActivitiesAsync),
-            response.StatusCode,
-            responseBody);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogWarning(
-                "({Method}) failed with status code {StatusCode}, Body={Body}",
-                nameof(GetActivitiesAsync),
-                response.StatusCode,
-                FormatJsonForLog(responseBody));
-            return new GestionaApiCallResult<IReadOnlyList<Activity>>((int)response.StatusCode, false, []);
-        }
-
-        var responseModel = DeserializeResponse<ActivitiesResponse>(
-            responseBody,
-            nameof(GetActivitiesAsync));
-
-        return new GestionaApiCallResult<IReadOnlyList<Activity>>(
-            (int)response.StatusCode,
-            true,
-            responseModel?.Content ?? []);
+            response => response.Content,
+            response => response.Links,
+            cancellationToken);
     }
 
     /// <summary>
@@ -883,42 +860,19 @@ public sealed class GestionaApiClient : IGestionaApiClient
         httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
 
         var route = $"{Catalog2015ProceduresRoute}/{Uri.EscapeDataString(activityId)}/external-procedures";
-        using var request = new HttpRequestMessage(HttpMethod.Get, route);
-
         _logger.LogInformation(
             "({Method}) getting Gestiona external procedures for activity {ActivityId} via {RequestUri}",
             nameof(GetExternalProceduresAsync),
             activityId,
-            new Uri(httpClient.BaseAddress, request.RequestUri!));
+            new Uri(httpClient.BaseAddress, route));
 
-        using var response = await httpClient.SendAsync(request, cancellationToken);
-        LogDeprecatedHeader(response, nameof(GetExternalProceduresAsync));
-        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
-
-        _logger.LogDebug(
-            "({Method}) external procedures response: StatusCode={StatusCode}, Body={Body}",
+        return await GetPagedContentAsync<ExternalProceduresResponse, ExternalProcedure>(
+            httpClient,
+            route,
             nameof(GetExternalProceduresAsync),
-            response.StatusCode,
-            responseBody);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogWarning(
-                "({Method}) failed with status code {StatusCode}, Body={Body}",
-                nameof(GetExternalProceduresAsync),
-                response.StatusCode,
-                FormatJsonForLog(responseBody));
-            return new GestionaApiCallResult<IReadOnlyList<ExternalProcedure>>((int)response.StatusCode, false, []);
-        }
-
-        var responseModel = DeserializeResponse<ExternalProceduresResponse>(
-            responseBody,
-            nameof(GetExternalProceduresAsync));
-
-        return new GestionaApiCallResult<IReadOnlyList<ExternalProcedure>>(
-            (int)response.StatusCode,
-            true,
-            responseModel?.Content ?? []);
+            response => response.Content,
+            response => response.Links,
+            cancellationToken);
     }
 
     /// <summary>
@@ -2336,6 +2290,104 @@ public sealed class GestionaApiClient : IGestionaApiClient
         }
 
         return thirdFilter.Content[0].Id;
+    }
+
+    private async Task<GestionaApiCallResult<IReadOnlyList<TItem>>> GetPagedContentAsync<TResponse, TItem>(
+        HttpClient httpClient,
+        string initialRoute,
+        string methodName,
+        Func<TResponse, IReadOnlyList<TItem>?> getContent,
+        Func<TResponse, IReadOnlyList<GestionaLink>?> getLinks,
+        CancellationToken cancellationToken)
+    {
+        var items = new List<TItem>();
+        var visitedUris = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var currentUri = new Uri(httpClient.BaseAddress!, initialRoute);
+        var statusCode = (int)System.Net.HttpStatusCode.OK;
+
+        while (true)
+        {
+            if (!HasSameOrigin(httpClient.BaseAddress!, currentUri))
+            {
+                _logger.LogWarning(
+                    "({Method}) refused cross-origin pagination link {RequestUri}",
+                    methodName,
+                    currentUri);
+                return new GestionaApiCallResult<IReadOnlyList<TItem>>(statusCode, false, []);
+            }
+
+            if (!visitedUris.Add(currentUri.AbsoluteUri))
+            {
+                _logger.LogWarning(
+                    "({Method}) detected repeated pagination link {RequestUri}",
+                    methodName,
+                    currentUri);
+                return new GestionaApiCallResult<IReadOnlyList<TItem>>(statusCode, false, []);
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, currentUri);
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            statusCode = (int)response.StatusCode;
+            LogDeprecatedHeader(response, methodName);
+            var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+            _logger.LogDebug(
+                "({Method}) paged response from {RequestUri}: StatusCode={StatusCode}, Body={Body}",
+                methodName,
+                currentUri,
+                response.StatusCode,
+                responseBody);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "({Method}) failed with status code {StatusCode}, Body={Body}",
+                    methodName,
+                    response.StatusCode,
+                    FormatJsonForLog(responseBody));
+                return new GestionaApiCallResult<IReadOnlyList<TItem>>(statusCode, false, []);
+            }
+
+            var responseModel = DeserializeResponse<TResponse>(responseBody, methodName);
+            if (responseModel is null)
+            {
+                return new GestionaApiCallResult<IReadOnlyList<TItem>>(statusCode, false, []);
+            }
+
+            var pageItems = getContent(responseModel);
+            if (pageItems is not null)
+            {
+                items.AddRange(pageItems);
+            }
+
+            var nextHref = getLinks(responseModel)?
+                .FirstOrDefault(link =>
+                    string.Equals(link.Rel, "next", StringComparison.OrdinalIgnoreCase))?
+                .Href;
+
+            if (string.IsNullOrWhiteSpace(nextHref))
+            {
+                return new GestionaApiCallResult<IReadOnlyList<TItem>>(statusCode, true, items);
+            }
+
+            if (!Uri.TryCreate(currentUri, nextHref, out var nextUri))
+            {
+                _logger.LogWarning(
+                    "({Method}) received invalid pagination link {NextHref}",
+                    methodName,
+                    nextHref);
+                return new GestionaApiCallResult<IReadOnlyList<TItem>>(statusCode, false, []);
+            }
+
+            currentUri = nextUri;
+        }
+    }
+
+    private static bool HasSameOrigin(Uri baseUri, Uri candidateUri)
+    {
+        return string.Equals(baseUri.Scheme, candidateUri.Scheme, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(baseUri.Host, candidateUri.Host, StringComparison.OrdinalIgnoreCase)
+            && baseUri.Port == candidateUri.Port;
     }
 
     /// <summary>

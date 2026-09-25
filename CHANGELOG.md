@@ -2,6 +2,18 @@
 
 All notable changes to Gestiona Gateway API are documented in this file.
 
+## [1.9.2]
+
+### Added
+
+- Support for various response body encoding: UTF8, Windows-1252. The request should set the header Accept-Charset: windows-1252
+
+### Changed
+
+### Fixed
+
+- For paginated content aggregates and returns the aggregated content. Follows the links array where rel="next" to get all the pages from the Gestiona response paginated content.
+
 ## [1.9.1]
 
 ### Added

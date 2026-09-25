@@ -659,6 +659,59 @@ public sealed class GestionaApiClientTests
     }
 
     [Fact]
+    public async Task GetActivitiesAsync_FollowsNextLinksAndAggregatesPages()
+    {
+        var requestedUris = new List<string>();
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            requestedUris.Add(request.RequestUri!.ToString());
+            var responseJson = requestedUris.Count == 1
+                ? """
+                    {
+                      "content": [{ "id": "activity-1", "name": "First" }],
+                      "links": [
+                        {
+                          "rel": "next",
+                          "href": "https://gestiona.example/rest/catalog-2015/procedures?page=2"
+                        }
+                      ]
+                    }
+                    """
+                : """
+                    {
+                      "content": [{ "id": "activity-2", "name": "Second" }],
+                      "links": [{ "rel": "self", "href": "catalog-2015/procedures?page=2" }]
+                    }
+                    """;
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(
+            new StubHttpClientFactory(handler),
+            NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.GetActivitiesAsync(
+            "https://gestiona.example/rest",
+            "token",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(
+            [
+                "https://gestiona.example/rest/catalog-2015/procedures",
+                "https://gestiona.example/rest/catalog-2015/procedures?page=2"
+            ],
+            requestedUris);
+        Assert.Collection(
+            result.Value!,
+            item => Assert.Equal(("activity-1", "First"), (item.Id, item.Name)),
+            item => Assert.Equal(("activity-2", "Second"), (item.Id, item.Name)));
+    }
+
+    [Fact]
     public async Task GetProcessDocumentsAsync_MapsContentAndUsesExpectedRoute()
     {
         HttpRequestMessage? capturedRequest = null;

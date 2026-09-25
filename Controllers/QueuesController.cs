@@ -252,6 +252,25 @@ public sealed class QueuesController : ControllerBase
                 $"Invalid JSON request body at {exception.Path ?? "the root value"}.");
         }
 
+        return await SendConnectorResponse(
+            connectorName,
+            messageId,
+            request,
+            operationId,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Processes an already deserialized queue connector response request.
+    /// </summary>
+    [NonAction]
+    public async Task<ActionResult<GatewayResponse>> SendConnectorResponse(
+        string connectorName,
+        string messageId,
+        SendQueueConnectorResponseRequest? request,
+        string? operationId,
+        CancellationToken cancellationToken)
+    {
         _logger.LogInformation(
             "{Method} received queue connector response for connector {ConnectorName}, message {MessageId} with operationId {OperationId}",
             nameof(SendConnectorResponse),

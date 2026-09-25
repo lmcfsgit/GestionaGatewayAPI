@@ -144,6 +144,18 @@ public sealed class ProcessesController : ControllerBase
                 GetInvalidJsonMessage(deserializationException));
         }
 
+        return await RelateProcesses(request, operationId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Processes an already deserialized related-process request.
+    /// </summary>
+    [NonAction]
+    public async Task<ActionResult<GatewayResponse>> RelateProcesses(
+        RelatedProcessesRequest? request,
+        string? operationId,
+        CancellationToken cancellationToken)
+    {
         _logger.LogInformation(
             "{Method} received related processes request for {Id1}/{Id2} with operationId {OperationId}",
             nameof(RelateProcesses),

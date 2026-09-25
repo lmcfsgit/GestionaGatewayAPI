@@ -7,7 +7,8 @@ public sealed record Activity(
     [property: JsonPropertyName("name")] string? Name);
 
 public sealed record ActivitiesResponse(
-    [property: JsonPropertyName("content")] IReadOnlyList<Activity>? Content);
+    [property: JsonPropertyName("content")] IReadOnlyList<Activity>? Content,
+    [property: JsonPropertyName("links")] IReadOnlyList<GestionaLink>? Links = null);
 
 public sealed record Procedure(
     [property: JsonPropertyName("id")] string? Id,
@@ -19,7 +20,8 @@ public sealed record ExternalProcedure(
     [property: JsonPropertyName("title")] string? Title);
 
 public sealed record ExternalProceduresResponse(
-    [property: JsonPropertyName("content")] IReadOnlyList<ExternalProcedure>? Content);
+    [property: JsonPropertyName("content")] IReadOnlyList<ExternalProcedure>? Content,
+    [property: JsonPropertyName("links")] IReadOnlyList<GestionaLink>? Links = null);
 
 public sealed record GetActivitiesResult(
     bool Success,

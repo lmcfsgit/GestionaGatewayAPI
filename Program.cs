@@ -3,6 +3,7 @@ using GestionaGateway.Core.Services;
 using GestionaGatewayAPI.Middleware;
 using Serilog;
 using System.Reflection;
+using System.Text;
 
 namespace GestionaGatewayAPI;
 
@@ -10,6 +11,8 @@ public sealed class Program
 {
     public static void Main(string[] args)
     {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
         var builder = WebApplication.CreateBuilder(args);
         var logsPath = Path.Combine(builder.Environment.ContentRootPath, "logs", "log-.txt");
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -82,6 +85,8 @@ public sealed class Program
             }
 
             app.UseMiddleware<ClientRequestLoggingMiddleware>();
+            app.UseMiddleware<ResponseCharsetMiddleware>();
+            app.UseMiddleware<ResponseJsonLoggingMiddleware>();
             app.UseSerilogRequestLogging();
 
             // app.UseHttpsRedirection();
