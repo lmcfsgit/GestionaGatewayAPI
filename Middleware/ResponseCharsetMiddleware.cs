@@ -11,6 +11,11 @@ public sealed class ResponseCharsetMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<ResponseCharsetMiddleware> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ResponseCharsetMiddleware"/> class.
+    /// </summary>
+    /// <param name="next">The next middleware in the request pipeline.</param>
+    /// <param name="logger">The logger used to report charset conversion problems.</param>
     public ResponseCharsetMiddleware(
         RequestDelegate next,
         ILogger<ResponseCharsetMiddleware> logger)
@@ -19,6 +24,12 @@ public sealed class ResponseCharsetMiddleware
         _logger = logger;
     }
 
+    /// <summary>
+    /// Executes the middleware and encodes a non-empty JSON response using the charset
+    /// selected from the request's Accept-Charset header.
+    /// </summary>
+    /// <param name="context">The context for the current HTTP request and response.</param>
+    /// <returns>A task that represents execution of the middleware.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
         var responseEncoding = ResolveEncoding(context);
@@ -78,6 +89,14 @@ public sealed class ResponseCharsetMiddleware
         }
     }
 
+    /// <summary>
+    /// Resolves the most preferred supported charset from the request's Accept-Charset header.
+    /// </summary>
+    /// <param name="context">The context containing the request headers.</param>
+    /// <returns>
+    /// The selected encoding, or <see langword="null"/> when no specific supported charset
+    /// is requested and the response should remain UTF-8.
+    /// </returns>
     private Encoding? ResolveEncoding(HttpContext context)
     {
         var acceptedCharsets = context.Request.GetTypedHeaders().AcceptCharset;
@@ -117,6 +136,11 @@ public sealed class ResponseCharsetMiddleware
         return null;
     }
 
+    /// <summary>
+    /// Determines whether a content type represents JSON or a JSON-based media type.
+    /// </summary>
+    /// <param name="contentType">The response content type to examine.</param>
+    /// <returns><see langword="true"/> when the content type represents JSON; otherwise, <see langword="false"/>.</returns>
     private static bool IsJsonContentType(string? contentType)
     {
         if (string.IsNullOrWhiteSpace(contentType))

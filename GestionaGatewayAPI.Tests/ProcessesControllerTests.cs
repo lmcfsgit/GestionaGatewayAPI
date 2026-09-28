@@ -13,6 +13,38 @@ namespace GestionaGatewayAPI.Tests;
 public sealed class ProcessesControllerTests
 {
     [Fact]
+    public async Task UploadToFile_WhenGestionaRejectsDocument_ReturnsDetailsInGatewayResult()
+    {
+        var controller = CreateController(new TestGestionaProcessService
+        {
+            CreateDocumentInProcessAsyncHandler = (request, processId, folderId, resolveFileId, documentsFolder, accessToken, cancellationToken) =>
+                Task.FromResult(new CreateDocumentInProcessResult(
+                    false,
+                    CreateDocumentInProcessFailureKind.Upstream,
+                    "The document could not be created.; The file is locked.",
+                    null,
+                    400))
+        });
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        controller.Request.Body = new MemoryStream(
+            """{"OperationId":"operation-1","Name":"Document","DocumentSourceType":"EXTERNAL_URL","Url":"https://example.com/document"}"""u8.ToArray());
+
+        var response = await controller.UploadToFile(
+            "360f3d62-a745-4135-86cb-1ad41e0657cd",
+            CancellationToken.None);
+
+        var objectResult = Assert.IsType<ObjectResult>(response.Result);
+        Assert.Equal(StatusCodes.Status400BadRequest, objectResult.StatusCode);
+        var gatewayResponse = Assert.IsType<GatewayResponse>(objectResult.Value);
+        Assert.False(gatewayResponse.Success);
+        var error = Assert.IsType<UploadDocumentError>(gatewayResponse.Result);
+        Assert.Equal("The document could not be created.; The file is locked.", error.Message);
+    }
+
+    [Fact]
     public async Task GetAssigneeGroups_ReturnsGatewayResponseWithGroups()
     {
         var controller = CreateController(new TestGestionaProcessService
@@ -326,6 +358,7 @@ public sealed class ProcessesControllerTests
         public Func<string, string, string?, CancellationToken, Task<DeleteRelatedProcessResult>>? DeleteRelatedProcessAsyncHandler { get; init; }
         public Func<string, string?, CancellationToken, Task<GetRelatedProcessesResult>>? GetRelatedProcessesAsyncHandler { get; init; }
         public Func<string, string, string?, CancellationToken, Task<GetProcessDocumentSignaturesResult>>? GetProcessDocumentSignaturesAsyncHandler { get; init; }
+        public Func<UploadDocumentRequest, string, string?, bool, string, string?, CancellationToken, Task<CreateDocumentInProcessResult>>? CreateDocumentInProcessAsyncHandler { get; init; }
 
         public Task<CreateDocumentInProcessResult> CreateDocumentInProcessAsync(
             UploadDocumentRequest request,
@@ -336,7 +369,19 @@ public sealed class ProcessesControllerTests
             string? accessTokenOverride,
             CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            if (CreateDocumentInProcessAsyncHandler is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            return CreateDocumentInProcessAsyncHandler(
+                request,
+                processId,
+                folderId,
+                resolveFileIdFromProcessCode,
+                documentsFolder,
+                accessTokenOverride,
+                cancellationToken);
         }
 
         public Task<CreateProcessResult> CreateProcessAsync(

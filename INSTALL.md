@@ -39,9 +39,10 @@ the installer, and run:
 | Parameter | Required | Description |
 | --- | --- | --- |
 | `ZipPath` | Yes | Path to the published application ZIP. |
-| `Port` | Yes | HTTP port from 1 through 65535. It must not already be used by an IIS binding. |
-| `InstallPath` | Yes | Destination for the application files. It must be empty if it already exists and cannot be a drive root. |
-| `SiteName` | No | Name assigned to both the IIS website and application pool. |
+| `Operation` | No | `Install` (the default) or `Update`. |
+| `Port` | Install only | HTTP port from 1 through 65535. It must not already be used by an IIS binding. |
+| `InstallPath` | Install only | Destination for the application files. It must be empty if it already exists and cannot be a drive root. |
+| `SiteName` | No | IIS website name. Defaults to `GestionaGatewayAPI`; a new application pool uses the same name. |
 
 The script performs the following operations:
 
@@ -74,20 +75,20 @@ port, and installation path:
 
 ## Update
 
-Run the same command with a new package and the existing site's name, port, and
-installation path:
+Select the update operation and provide the new package. Specify `SiteName` only
+when the existing site does not use the default name:
 
 ```powershell
 .\Install-IIS.ps1 `
+    -Operation Update `
     -ZipPath C:\publish\GestionaGatewayAPI.zip `
-    -Port 8080 `
-    -InstallPath C:\inetpub\GestionaGatewayAPI `
     -SiteName GestionaGatewayAPI
 ```
 
-An update is allowed only when both the named website and matching application
-pool already exist, the website uses that application pool, its physical path
-matches `InstallPath`, and it has an HTTP binding on `Port`.
+The installer obtains the physical path, assigned application pool, and HTTP
+port from the existing IIS website. An update is allowed only when the named
+website, its assigned application pool, physical path, and an HTTP binding all
+exist.
 
 Before replacing files, the installer validates the new package and copies the
 current application to a temporary backup. During the update it:

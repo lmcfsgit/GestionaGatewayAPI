@@ -12,6 +12,46 @@ namespace GestionaGatewayAPI.Tests;
 public sealed class GestionaProcessServiceTests
 {
     [Fact]
+    public async Task CreateDocumentInProcessAsync_WhenGestionaRejectsDocument_ConcatenatesResponseDetails()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            CreateDocumentUrlAsyncHandler = (baseUrl, token, fileId, folderId, request, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<CreateDocumentAndFolderResponse?>(
+                    400,
+                    false,
+                    new CreateDocumentAndFolderResponse
+                    {
+                        Details =
+                        [
+                            "The document could not be created.",
+                            "The file is locked."
+                        ]
+                    }))
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.CreateDocumentInProcessAsync(
+            new UploadDocumentRequest
+            {
+                Name = "Document",
+                DocumentSourceType = "EXTERNAL_URL",
+                Url = "https://example.com/document"
+            },
+            "file-123",
+            folderId: null,
+            resolveFileIdFromProcessCode: false,
+            documentsFolder: string.Empty,
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(CreateDocumentInProcessFailureKind.Upstream, result.FailureKind);
+        Assert.Equal(400, result.UpstreamStatusCode);
+        Assert.Equal("The document could not be created.; The file is locked.", result.ErrorMessage);
+    }
+
+    [Fact]
     public async Task RelateProcessesAsync_PostsRelatedFilesLinkAndReturnsRequest()
     {
         string? receivedBaseUrl = null;

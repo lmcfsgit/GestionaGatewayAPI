@@ -2,6 +2,30 @@
 
 All notable changes to Gestiona Gateway API are documented in this file.
 
+## [1.9.3]
+
+### Added
+
+### Changed
+
+### Fixed
+
+- The GatewayResponse result.message when a error has occurred, now gets the message returned by Gestiona.
+
+```json
+  Ex:
+  {
+    "operationId": "OP-001",
+    "success": false,
+    "result": {
+    "code": 412,
+    "name": "Precondition Failed",
+    "kind": "Upstream",
+    "message": "URL externo=Campo obrigatório"
+    }
+  }
+```
+
 ## [1.9.2]
 
 ### Added

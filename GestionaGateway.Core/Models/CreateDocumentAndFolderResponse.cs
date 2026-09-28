@@ -8,6 +8,12 @@ namespace GestionaGateway.Core.Models;
 public sealed record CreateDocumentAndFolderResponse
 {
     /// <summary>
+    /// Gets the error details returned by Gestiona when the request fails.
+    /// </summary>
+    [JsonPropertyName("details")]
+    public IReadOnlyList<string>? Details { get; init; }
+
+    /// <summary>
     /// Gets the upstream entity identifier when it is included directly in the response body.
     /// </summary>
     [JsonPropertyName("id")]

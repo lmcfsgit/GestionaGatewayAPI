@@ -161,7 +161,10 @@ public sealed class GestionaProcessService : IGestionaProcessService
             if (!createdDocumentResult.Success)
             {
                 _logger.LogWarning("({Method}) failed at step {Step} for process {ProcessId}", nameof(CreateDocumentInProcessAsync), "CreateFolderInGestiona", processId);
-                return Failure(CreateDocumentInProcessFailureKind.Upstream, "Failed to create folder in Gestiona file.", createdDocumentResult.StatusCode);
+                return Failure(
+                    CreateDocumentInProcessFailureKind.Upstream,
+                    GetCreationFailureMessage(createdDocument, "Failed to create folder in Gestiona file."),
+                    createdDocumentResult.StatusCode);
             }
         }
         else if (string.Equals(request.DocumentSourceType, "DIGITAL", StringComparison.OrdinalIgnoreCase))
@@ -243,7 +246,10 @@ public sealed class GestionaProcessService : IGestionaProcessService
             if (!createdDocumentResult.Success)
             {
                 _logger.LogWarning("({Method}) failed at step {Step} for process {ProcessId}", nameof(CreateDocumentInProcessAsync), "CreateDocumentInGestiona", processId);
-                return Failure(CreateDocumentInProcessFailureKind.Upstream, "Failed to create document in Gestiona file.", createdDocumentResult.StatusCode);
+                return Failure(
+                    CreateDocumentInProcessFailureKind.Upstream,
+                    GetCreationFailureMessage(createdDocument, "Failed to create document in Gestiona file."),
+                    createdDocumentResult.StatusCode);
             }
         }
         else
@@ -273,7 +279,10 @@ public sealed class GestionaProcessService : IGestionaProcessService
             if (!createdDocumentResult.Success)
             {
                 _logger.LogWarning("({Method}) failed at step {Step} for process {ProcessId}", nameof(CreateDocumentInProcessAsync), "CreateDocumentUrlInGestiona", processId);
-                return Failure(CreateDocumentInProcessFailureKind.Upstream, "Failed to create document in Gestiona file.", createdDocumentResult.StatusCode);
+                return Failure(
+                    CreateDocumentInProcessFailureKind.Upstream,
+                    GetCreationFailureMessage(createdDocument, "Failed to create document in Gestiona file."),
+                    createdDocumentResult.StatusCode);
             }
         }
 
@@ -1069,6 +1078,19 @@ public sealed class GestionaProcessService : IGestionaProcessService
     /// <param name="errorMessage">The human-readable failure message.</param>
     /// <param name="upstreamStatusCode">The optional upstream Gestiona status code.</param>
     /// <returns>A failed document-creation result.</returns>
+    private static string GetCreationFailureMessage(
+        CreateDocumentAndFolderResponse? response,
+        string fallbackMessage)
+    {
+        var details = response?.Details?
+            .Where(detail => !string.IsNullOrWhiteSpace(detail))
+            .ToArray();
+
+        return details is null || details.Length == 0
+            ? fallbackMessage
+            : string.Join("; ", details);
+    }
+
     private static CreateDocumentInProcessResult Failure(
         CreateDocumentInProcessFailureKind failureKind,
         string errorMessage,

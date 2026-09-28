@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.11" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>INSTALL.pt</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: clamp(1rem, 4vw, 3rem);
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1rem;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<h1 id="instalação-no-iis">Instalação no IIS</h1>
+<p>Este guia descreve como instalar ou atualizar um pacote publicado da
+Gestiona Gateway API como um site do IIS, utilizando o
+<code>Install-IIS.ps1</code>.</p>
+<h2 id="requisitos">Requisitos</h2>
+<ul>
+<li>Uma instalação suportada do Windows ou Windows Server com o IIS
+ativado.</li>
+<li>A funcionalidade Scripts e Ferramentas de Gestão do IIS, que
+disponibiliza o módulo <code>WebAdministration</code> do
+PowerShell.</li>
+<li>O Pacote de Alojamento do .NET 8, incluindo o ASP.NET Core Module
+V2. Reinicie o IIS depois de instalar o pacote.</li>
+<li>Windows PowerShell executado como Administrador.</li>
+<li>Um ficheiro ZIP com a aplicação publicada. Deve conter exatamente um
+<code>GestionaGatewayAPI.dll</code> e um <code>web.config</code> no
+diretório da aplicação publicada.</li>
+<li>Uma porta HTTP livre, um nome de site do IIS exclusivo e um
+diretório de instalação que não exista ou esteja vazio.</li>
+<li>Acesso de rede do servidor ao endpoint configurado da API
+Gestiona.</li>
+</ul>
+<p>O SDK do .NET só é necessário quando o pacote é produzido no
+servidor. Não é necessário para executar uma aplicação implementada com
+o Pacote de Alojamento do .NET 8.</p>
+<h2 id="instalação">Instalação</h2>
+<p>Abra o Windows PowerShell como Administrador, mude para o diretório
+que contém o instalador e execute:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\Install-IIS<span class="op">.</span><span class="fu">ps1</span> `</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>ZipPath C<span class="op">:</span>\publish\GestionaGatewayAPI<span class="op">.</span><span class="fu">zip</span> `</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>Port <span class="dv">8080</span> `</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>InstallPath C<span class="op">:</span>\inetpub\GestionaGatewayAPI `</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>SiteName GestionaGatewayAPI</span></code></pre></div>
+<p>O <code>SiteName</code> é opcional e, por predefinição, utiliza
+<code>GestionaGatewayAPI</code>.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Parâmetro</th>
+<th>Obrigatório</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ZipPath</code></td>
+<td>Sim</td>
+<td>Caminho para o ficheiro ZIP da aplicação publicada.</td>
+</tr>
+<tr>
+<td><code>Operation</code></td>
+<td>Não</td>
+<td><code>Install</code> (a predefinição) ou <code>Update</code>.</td>
+</tr>
+<tr>
+<td><code>Port</code></td>
+<td>Apenas instalação</td>
+<td>Porta HTTP entre 1 e 65535. Não pode estar a ser utilizada por uma
+ligação do IIS.</td>
+</tr>
+<tr>
+<td><code>InstallPath</code></td>
+<td>Apenas instalação</td>
+<td>Destino dos ficheiros da aplicação. Se já existir, deve estar vazio
+e não pode ser a raiz de uma unidade.</td>
+</tr>
+<tr>
+<td><code>SiteName</code></td>
+<td>Não</td>
+<td>Nome do site do IIS. Por predefinição, utiliza
+<code>GestionaGatewayAPI</code>; um novo conjunto aplicacional utiliza o
+mesmo nome.</td>
+</tr>
+</tbody>
+</table>
+<p>O script efetua as seguintes operações:</p>
+<ol type="1">
+<li>Valida o ficheiro ZIP, o módulo do IIS, o ASP.NET Core Module V2, a
+porta, o nome do site e o destino.</li>
+<li>Extrai e copia a aplicação publicada.</li>
+<li>Cria um diretório <code>logs</code>.</li>
+<li>Cria um conjunto aplicacional do IIS utilizando
+<code>ApplicationPoolIdentity</code> e sem CLR gerido.</li>
+<li>Concede ao conjunto aplicacional acesso de leitura à aplicação e
+acesso de modificação a <code>logs</code>.</li>
+<li>Cria e inicia um site HTTP associado a todos os endereços IP locais
+na porta solicitada.</li>
+</ol>
+<p>Se uma nova instalação falhar, o script remove o site, o conjunto
+aplicacional e os ficheiros criados por essa tentativa de instalação. O
+script recusa-se a substituir um site, conjunto aplicacional ou ligação
+de porta do IIS não relacionado, bem como um caminho de instalação que
+não esteja vazio.</p>
+<p>Para instalar outra instância em paralelo com a primeira, utilize um
+nome de site, uma porta e um caminho de instalação diferentes:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\Install-IIS<span class="op">.</span><span class="fu">ps1</span> `</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>ZipPath C<span class="op">:</span>\publish\GestionaGatewayAPI<span class="op">.</span><span class="fu">zip</span> `</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>Port <span class="dv">8081</span> `</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>InstallPath C<span class="op">:</span>\inetpub\GestionaGatewayAPI-Test `</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>SiteName GestionaGatewayAPI-Test</span></code></pre></div>
+<h2 id="atualização">Atualização</h2>
+<p>Selecione a operação de atualização e indique o novo pacote.
+Especifique <code>SiteName</code> apenas quando o site existente não
+utilizar o nome predefinido:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\Install-IIS<span class="op">.</span><span class="fu">ps1</span> `</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>Operation Update `</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>ZipPath C<span class="op">:</span>\publish\GestionaGatewayAPI<span class="op">.</span><span class="fu">zip</span> `</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>SiteName GestionaGatewayAPI</span></code></pre></div>
+<p>O instalador obtém o caminho físico, o conjunto aplicacional
+atribuído e a porta HTTP a partir do site existente no IIS. Uma
+atualização só é permitida quando o site indicado, o conjunto
+aplicacional atribuído, o caminho físico e uma ligação HTTP existem.</p>
+<p>Antes de substituir os ficheiros, o instalador valida o novo pacote e
+copia a aplicação atual para uma cópia de segurança temporária. Durante
+a atualização:</p>
+<ol type="1">
+<li>Regista se o site e o conjunto aplicacional estão em execução.</li>
+<li>Para o site e o conjunto aplicacional, caso estejam em
+execução.</li>
+<li>Substitui os ficheiros da aplicação instalada.</li>
+<li>Preserva o diretório <code>logs</code>, os ficheiros
+<code>appsettings*.json</code> existentes na raiz e o
+<code>web.config</code>.</li>
+<li>Restaura o estado anterior, em execução ou parado.</li>
+</ol>
+<p>Se a substituição falhar, os ficheiros anteriores da aplicação e o
+estado do serviço são restaurados automaticamente. Os diretórios
+temporários do pacote e da cópia de segurança são removidos depois da
+conclusão.</p>
+<h2 id="configuração">Configuração</h2>
+<p>Configure o <code>appsettings.json</code> instalado antes de iniciar
+o tráfego de produção ou disponibilize variáveis de ambiente
+equivalentes. Nos nomes das variáveis de ambiente do ASP.NET Core,
+utilizam-se dois caracteres de sublinhado (<code>__</code>) em
+substituição dos dois pontos (<code>:</code>) da configuração.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Definição</th>
+<th>Variável de ambiente</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Gestiona:GestionaApiBaseUrl</code></td>
+<td><code>Gestiona__GestionaApiBaseUrl</code></td>
+<td>URL base da API REST Gestiona.</td>
+</tr>
+<tr>
+<td><code>Gestiona:AccessToken</code></td>
+<td><code>Gestiona__AccessToken</code></td>
+<td>Token de acesso predefinido da Gestiona. Este valor deve ser
+definido como uma variável de ambiente do sistema e não pode ser
+guardado no <code>appsettings.json</code>. Os pedidos que suportam
+<code>X-User-Access-Token</code> utilizam esse cabeçalho em vez deste
+valor.</td>
+</tr>
+<tr>
+<td><code>Gestiona:AddonToken</code></td>
+<td><code>Gestiona__AddonToken</code></td>
+<td>Token utilizado nas operações de autorização de add-ons.</td>
+</tr>
+<tr>
+<td><code>Serilog:MinimumLevel:Default</code></td>
+<td><code>Serilog__MinimumLevel__Default</code></td>
+<td>Nível mínimo de registo da aplicação, como <code>Information</code>
+ou <code>Debug</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Exemplo de configuração:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;Gestiona&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;GestionaApiBaseUrl&quot;</span><span class="fu">:</span> <span class="st">&quot;https://gestiona.example/rest&quot;</span><span class="fu">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;AddonToken&quot;</span><span class="fu">:</span> <span class="st">&quot;replace-with-a-secret&quot;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Defina o token de acesso como uma variável de ambiente do Windows ao
+nível da máquina, a partir de uma sessão elevada do PowerShell:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span>Environment<span class="op">]::</span>SetEnvironmentVariable<span class="op">(</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Gestiona__AccessToken&quot;</span><span class="op">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;replace-with-a-secret&quot;</span><span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">[</span>EnvironmentVariableTarget<span class="op">]::</span>Machine<span class="op">)</span></span></code></pre></div>
+<p>Não adicione <code>Gestiona:AccessToken</code> ao
+<code>appsettings.json</code> nem submeta tokens de produção ao controlo
+de versões. Depois de criar ou alterar a variável de ambiente do
+sistema, reinicie o IIS para que os processos de trabalho recebam o novo
+valor:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>iisreset</span></code></pre></div>
+<p>Depois de alterar outra configuração da aplicação, recicle o conjunto
+aplicacional:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>Restart-WebAppPool <span class="op">-</span>Name GestionaGatewayAPI</span></code></pre></div>
+<p>O Serilog grava ficheiros contínuos em
+<code>&lt;InstallPath&gt;\logs</code>. Definir o nível mínimo como
+<code>Debug</code> pode registar detalhes dos pedidos e só deve ser
+ativado quando necessário.</p>
+<h2 id="verificar-a-instalação">Verificar a instalação</h2>
+<p>Verifique o site e o conjunto aplicacional do IIS:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>Get-Website <span class="op">-</span>Name GestionaGatewayAPI</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>Get-WebAppPoolState <span class="op">-</span>Name GestionaGatewayAPI</span></code></pre></div>
+<p>Quando termina, o instalador apresenta a ligação local, por
+exemplo:</p>
+<pre class="text"><code>http://localhost:8080</code></pre>
+<p>Consulte <code>&lt;InstallPath&gt;\logs</code> se a aplicação não
+iniciar. A interface do Swagger só é ativada quando a aplicação é
+executada no ambiente <code>Development</code>.</p>
+<p>O instalador cria apenas uma ligação HTTP. Configure separadamente o
+certificado do servidor e uma ligação HTTPS do IIS quando for necessário
+utilizar TLS.</p>
+</body>
+</html>

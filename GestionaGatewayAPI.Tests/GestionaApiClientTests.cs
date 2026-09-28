@@ -10,6 +10,41 @@ namespace GestionaGatewayAPI.Tests;
 public sealed class GestionaApiClientTests
 {
     [Fact]
+    public async Task CreateDocumentUrlAsync_WhenUpstreamFails_ReturnsResponseDetails()
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(
+                    """{"details":["The document could not be created.","The file is locked."]}""",
+                    Encoding.UTF8,
+                    "application/json")
+            });
+        var client = new GestionaApiClient(
+            new StubHttpClientFactory(handler),
+            NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.CreateDocumentUrlAsync(
+            "https://gestiona.example/rest",
+            "token",
+            "file-123",
+            folderId: null,
+            new CreateDocumentInFileRequest
+            {
+                Name = "Document",
+                Type = "EXTERNAL_URL",
+                ExternalUrl = "https://example.com/document"
+            },
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal(
+            ["The document could not be created.", "The file is locked."],
+            result.Value!.Details);
+    }
+
+    [Fact]
     public async Task OpenProcessFileAsync_WhenSelectableTitleHasValue_SendsSelectableTitle()
     {
         string? capturedRequestBody = null;
