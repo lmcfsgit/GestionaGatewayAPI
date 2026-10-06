@@ -217,6 +217,19 @@ public interface IGestionaApiClient
         string? documentId,
         CancellationToken cancellationToken);
 
+    Task<GestionaApiCallResult<IReadOnlyList<ProcessProcedureDataDefinition>>> GetProcessProcedureDataAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<ProcessProcedureDataDefinition?>> GetProcessProcedureDataValueAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string referenceId,
+        CancellationToken cancellationToken);
+
     Task<GestionaApiCallResult<IReadOnlyList<ProcessDocumentSignature>>> GetProcessDocumentSignaturesAsync(
         string gestionaApiBaseUrl,
         string accessToken,

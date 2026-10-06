@@ -1193,6 +1193,80 @@ public sealed class GestionaApiClient : IGestionaApiClient
     }
 
     /// <summary>
+    /// Gets all procedure-data definitions associated with a Gestiona process file.
+    /// </summary>
+    public async Task<GestionaApiCallResult<IReadOnlyList<ProcessProcedureDataDefinition>>> GetProcessProcedureDataAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/procedure-data";
+        _logger.LogInformation(
+            "({Method}) getting Gestiona procedure data for process {ProcessId} via {RequestUri}",
+            nameof(GetProcessProcedureDataAsync),
+            processId,
+            new Uri(httpClient.BaseAddress, route));
+
+        return await GetPagedContentAsync<ProcessProcedureDataResponse, ProcessProcedureDataDefinition>(
+            httpClient,
+            route,
+            nameof(GetProcessProcedureDataAsync),
+            response => response.Content,
+            response => response.Links,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets one procedure-data value associated with a Gestiona process file.
+    /// </summary>
+    public async Task<GestionaApiCallResult<ProcessProcedureDataDefinition?>> GetProcessProcedureDataValueAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string referenceId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/procedure-data/{Uri.EscapeDataString(referenceId)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+
+        _logger.LogInformation(
+            "({Method}) getting Gestiona procedure data {ReferenceId} for process {ProcessId} via {RequestUri}",
+            nameof(GetProcessProcedureDataValueAsync),
+            referenceId,
+            processId,
+            new Uri(httpClient.BaseAddress, request.RequestUri!));
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetProcessProcedureDataValueAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+
+        _logger.LogDebug(
+            "({Method}) procedure-data value response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetProcessProcedureDataValueAsync),
+            response.StatusCode,
+            responseBody);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new GestionaApiCallResult<ProcessProcedureDataDefinition?>((int)response.StatusCode, false, null);
+        }
+
+        var value = DeserializeResponse<ProcessProcedureDataDefinition>(
+            responseBody,
+            nameof(GetProcessProcedureDataValueAsync));
+        return new GestionaApiCallResult<ProcessProcedureDataDefinition?>((int)response.StatusCode, value is not null, value);
+    }
+
+    /// <summary>
     /// Gets signatures associated with a document in a Gestiona file.
     /// </summary>
     /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>
@@ -1964,6 +2038,7 @@ public sealed class GestionaApiClient : IGestionaApiClient
         try
         {
             var address = JsonSerializer.Deserialize<ThirdDefaultAddress>(responseBody);
+
             return new GestionaApiCallResult<ThirdDefaultAddress?>((int)response.StatusCode, true, address);
         }
         catch (JsonException ex)

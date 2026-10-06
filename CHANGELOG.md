@@ -2,6 +2,19 @@
 
 All notable changes to Gestiona Gateway API are documented in this file.
 
+## [1.9.4]
+
+### Added
+
+- Added .../processes/{process_id}/procedure-data to get the "Thesaurus" associated with the provided process_id
+- Added .../processes/{process_id}/procedure-data/{reference_id} to get the the value of the thesaurus identified by reference_id
+
+### Changed
+
+- Added new fields to the Third model. New fields: Block, Stair, Floor, Door and Extension
+
+### Fixed
+
 ## [1.9.3]
 
 ### Added

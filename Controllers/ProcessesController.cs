@@ -544,6 +544,119 @@ public sealed class ProcessesController : ControllerBase
     }
 
     /// <summary>
+    /// Gets all procedure-data definitions associated with a Gestiona process.
+    /// </summary>
+    [HttpGet("{process_id}/procedure-data")]
+    public async Task<ActionResult<GatewayResponse>> GetProcedureData(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "{Method} received process procedure-data request for {ProcessId} with operationId {OperationId}",
+            nameof(GetProcedureData),
+            processId,
+            operationId);
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id route parameter is required.");
+        }
+
+        if (string.Equals(processId, "{{process_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id route parameter contains an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.GetProcessProcedureDataAsync(
+            processId,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessDocumentsFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.ProcedureData ?? []));
+    }
+
+    /// <summary>
+    /// Gets one procedure-data value associated with a Gestiona process.
+    /// </summary>
+    [HttpGet("{process_id}/procedure-data/{reference_id}")]
+    public async Task<ActionResult<GatewayResponse>> GetProcedureDataValue(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "reference_id")] string referenceId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(referenceId))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id and reference_id route parameters are required.");
+        }
+
+        if (string.Equals(processId, "{{process_id}}", StringComparison.Ordinal) ||
+            string.Equals(referenceId, "{{reference_id}}", StringComparison.Ordinal))
+        {
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.Validation,
+                "Route parameters contain an unresolved variable.");
+        }
+
+        var result = await _gestionaProcessService.GetProcessProcedureDataValueAsync(
+            processId,
+            referenceId,
+            GestionaRequestHeaders.GetAccessToken(Request),
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Configuration => StatusCodes.Status500InternalServerError,
+                GetProcessDocumentsFailureKind.Validation => StatusCodes.Status400BadRequest,
+                GetProcessDocumentsFailureKind.NotFound => StatusCodes.Status404NotFound,
+                _ => result.UpstreamStatusCode ?? StatusCodes.Status502BadGateway
+            };
+
+            return CreateProcessDocumentsErrorResponse(
+                operationId,
+                statusCode,
+                result.FailureKind,
+                result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.ProcedureData!));
+    }
+
+    /// <summary>
     /// Gets the documents and folders associated with a Gestiona process.
     /// </summary>
     /// <param name="processId">The Gestiona file identifier whose documents and folders should be retrieved.</param>

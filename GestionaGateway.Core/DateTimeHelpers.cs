@@ -8,8 +8,11 @@ public static class DateTimeHelpers
     /// Converts a Unix timestamp in seconds to Portugal local time using the gateway date-time format.
     /// </summary>
     /// <param name="unixTimestamp">The Unix timestamp in seconds, represented as text.</param>
+    /// <param name="format">The output date-time format.</param>
     /// <returns>The formatted Portugal local date-time, or the original value when it is not a valid Unix timestamp.</returns>
-    public static string FormatUnixTimestamp(string unixTimestamp)
+    public static string FormatUnixTimestamp(
+        string unixTimestamp,
+        string format = "yyyy-MM-dd HH:mm:ss")
     {
         if (!long.TryParse(unixTimestamp, out var unixSeconds))
         {
@@ -21,7 +24,7 @@ public static class DateTimeHelpers
             DateTimeOffset.FromUnixTimeSeconds(unixSeconds),
             portugalTimeZone);
 
-        return portugalTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        return portugalTime.ToString(format, CultureInfo.InvariantCulture);
     }
 
     /// <summary>

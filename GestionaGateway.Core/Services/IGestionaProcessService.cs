@@ -83,6 +83,17 @@ public interface IGestionaProcessService
         string? accessTokenOverride,
         CancellationToken cancellationToken);
 
+    Task<GetProcessProcedureDataResult> GetProcessProcedureDataAsync(
+        string processId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken);
+
+    Task<GetProcessProcedureDataValueResult> GetProcessProcedureDataValueAsync(
+        string processId,
+        string referenceId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken);
+
     Task<GetProcessDocumentSignaturesResult> GetProcessDocumentSignaturesAsync(
         string processId,
         string documentId,

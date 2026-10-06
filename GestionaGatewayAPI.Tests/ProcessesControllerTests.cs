@@ -337,6 +337,43 @@ public sealed class ProcessesControllerTests
         Assert.Equal("Luis Silva", signature.Name);
     }
 
+    [Fact]
+    public async Task GetProcedureData_ReturnsGatewayResponseWithMappedItems()
+    {
+        var controller = CreateController(new TestGestionaProcessService
+        {
+            GetProcessProcedureDataAsyncHandler = (processId, accessTokenOverride, cancellationToken) =>
+            {
+                IReadOnlyList<ProcessProcedureData> procedureData =
+                [
+                    new("field-1", "Descrição", "TEXT")
+                ];
+                return Task.FromResult(new GetProcessProcedureDataResult(
+                    true,
+                    GetProcessDocumentsFailureKind.None,
+                    null,
+                    procedureData,
+                    null));
+            }
+        });
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+
+        var response = await controller.GetProcedureData(
+            "file-123",
+            "operation-1",
+            CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(response.Result);
+        var gatewayResponse = Assert.IsType<GatewayResponse>(okResult.Value);
+        Assert.Equal("operation-1", gatewayResponse.OperationId);
+        Assert.True(gatewayResponse.Success);
+        var item = Assert.Single(Assert.IsAssignableFrom<IReadOnlyList<ProcessProcedureData>>(gatewayResponse.Result));
+        Assert.Equal(("field-1", "Descrição", "TEXT"), (item.Reference, item.Caption, item.Type));
+    }
+
     private static ProcessesController CreateController()
     {
         return CreateController(new TestGestionaProcessService());
@@ -358,6 +395,8 @@ public sealed class ProcessesControllerTests
         public Func<string, string, string?, CancellationToken, Task<DeleteRelatedProcessResult>>? DeleteRelatedProcessAsyncHandler { get; init; }
         public Func<string, string?, CancellationToken, Task<GetRelatedProcessesResult>>? GetRelatedProcessesAsyncHandler { get; init; }
         public Func<string, string, string?, CancellationToken, Task<GetProcessDocumentSignaturesResult>>? GetProcessDocumentSignaturesAsyncHandler { get; init; }
+        public Func<string, string?, CancellationToken, Task<GetProcessProcedureDataResult>>? GetProcessProcedureDataAsyncHandler { get; init; }
+        public Func<string, string, string?, CancellationToken, Task<GetProcessProcedureDataValueResult>>? GetProcessProcedureDataValueAsyncHandler { get; init; }
         public Func<UploadDocumentRequest, string, string?, bool, string, string?, CancellationToken, Task<CreateDocumentInProcessResult>>? CreateDocumentInProcessAsyncHandler { get; init; }
 
         public Task<CreateDocumentInProcessResult> CreateDocumentInProcessAsync(
@@ -456,6 +495,33 @@ public sealed class ProcessesControllerTests
             CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
+        }
+
+        public Task<GetProcessProcedureDataResult> GetProcessProcedureDataAsync(
+            string processId,
+            string? accessTokenOverride,
+            CancellationToken cancellationToken)
+        {
+            if (GetProcessProcedureDataAsyncHandler is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            return GetProcessProcedureDataAsyncHandler(processId, accessTokenOverride, cancellationToken);
+        }
+
+        public Task<GetProcessProcedureDataValueResult> GetProcessProcedureDataValueAsync(
+            string processId,
+            string referenceId,
+            string? accessTokenOverride,
+            CancellationToken cancellationToken)
+        {
+            if (GetProcessProcedureDataValueAsyncHandler is null)
+            {
+                throw new NotImplementedException();
+            }
+
+            return GetProcessProcedureDataValueAsyncHandler(processId, referenceId, accessTokenOverride, cancellationToken);
         }
 
         public Task<GetProcessDocumentSignaturesResult> GetProcessDocumentSignaturesAsync(

@@ -25,6 +25,8 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<DownloadedDocument?>>>? DownloadDocumentAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<string>>>>? GetProcessThirdIdsAsyncHandler { get; init; }
     public Func<string, string, string, string?, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>>>? GetProcessDocumentsAsyncHandler { get; init; }
+    public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<ProcessProcedureDataDefinition>>>>? GetProcessProcedureDataAsyncHandler { get; init; }
+    public Func<string, string, string, string, CancellationToken, Task<GestionaApiCallResult<ProcessProcedureDataDefinition?>>>? GetProcessProcedureDataValueAsyncHandler { get; init; }
     public Func<string, string, string, string, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<ProcessDocumentSignature>>>>? GetProcessDocumentSignaturesAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<ProcessAssigneeUser?>>>? GetUserByHrefAsyncHandler { get; init; }
     public Func<string, string, GetProcessAssigneeUserRequest, CancellationToken, Task<GestionaApiCallResult<ProcessAssigneeUser?>>>? GetProcessAssigneeUserAsyncHandler { get; init; }
@@ -226,6 +228,25 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
         CancellationToken cancellationToken)
     {
         return Invoke<GestionaApiCallResult<IReadOnlyList<ProcessDocument>>>(GetProcessDocumentsAsyncHandler, gestionaApiBaseUrl, accessToken, processId, documentId, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<IReadOnlyList<ProcessProcedureDataDefinition>>> GetProcessProcedureDataAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<IReadOnlyList<ProcessProcedureDataDefinition>>>(GetProcessProcedureDataAsyncHandler, gestionaApiBaseUrl, accessToken, processId, cancellationToken);
+    }
+
+    public Task<GestionaApiCallResult<ProcessProcedureDataDefinition?>> GetProcessProcedureDataValueAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string referenceId,
+        CancellationToken cancellationToken)
+    {
+        return Invoke<GestionaApiCallResult<ProcessProcedureDataDefinition?>>(GetProcessProcedureDataValueAsyncHandler, gestionaApiBaseUrl, accessToken, processId, referenceId, cancellationToken);
     }
 
     public Task<GestionaApiCallResult<IReadOnlyList<ProcessDocumentSignature>>> GetProcessDocumentSignaturesAsync(

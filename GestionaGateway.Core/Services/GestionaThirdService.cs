@@ -217,6 +217,11 @@ public sealed class GestionaThirdService : IGestionaThirdService
         {
             Address = address.Address,
             Number = address.Number,
+            Block = address.Block,
+            Stair = address.Stair,
+            Floor = address.Floor,
+            Door = address.Door,
+            Extension = address.Extension,
             ZipCode = address.ZipCode,
             Province = address.Province,
             Country = address.Country,

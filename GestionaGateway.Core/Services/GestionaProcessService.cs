@@ -122,7 +122,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
         var createDocumentRequest = new CreateDocumentInFileRequest
         {
             Name = documentName,
-            MetadataLanguage = "ES", // Is this important to set? Should it be configurable?
+            MetadataLanguage = "PT", // Is this important to set? Should it be configurable?
             // Trashed = "false",
             // Version = "1" // ?? Is this required for creation? Should it be configurable?
         };
@@ -826,6 +826,137 @@ public sealed class GestionaProcessService : IGestionaProcessService
     }
 
     /// <summary>
+    /// Gets and maps all procedure-data definitions for a Gestiona process file.
+    /// </summary>
+    public async Task<GetProcessProcedureDataResult> GetProcessProcedureDataAsync(
+        string processId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "({Method}) started. ProcessId={ProcessId}",
+            nameof(GetProcessProcedureDataAsync),
+            processId);
+
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return ProcedureDataFailure(
+                GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return ProcedureDataFailure(
+                GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(processId))
+        {
+            return ProcedureDataFailure(
+                GetProcessDocumentsFailureKind.Validation,
+                "processId is required.");
+        }
+
+        var procedureDataResult = await _gestionaApiClient.GetProcessProcedureDataAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            processId,
+            cancellationToken);
+
+        if (!procedureDataResult.Success)
+        {
+            var failureKind = procedureDataResult.StatusCode == 404
+                ? GetProcessDocumentsFailureKind.NotFound
+                : GetProcessDocumentsFailureKind.Upstream;
+            return ProcedureDataFailure(
+                failureKind,
+                $"Failed to get procedure data from Gestiona process: {processId}.",
+                GetUpstreamErrorStatusCode(procedureDataResult.StatusCode));
+        }
+
+        var procedureData = (procedureDataResult.Value ?? [])
+            .Select(item => new ProcessProcedureData(
+                item.Reference,
+                GetPortugueseCaption(item.I18nName),
+                item.Type))
+            .ToArray();
+
+        return new GetProcessProcedureDataResult(
+            true,
+            GetProcessDocumentsFailureKind.None,
+            null,
+            procedureData,
+            null);
+    }
+
+    public async Task<GetProcessProcedureDataValueResult> GetProcessProcedureDataValueAsync(
+        string processId,
+        string referenceId,
+        string? accessTokenOverride,
+        CancellationToken cancellationToken)
+    {
+        var gestionaApiBaseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var accessToken = GestionaAccessTokenResolver.Resolve(
+            _gestionaOptions,
+            accessTokenOverride,
+            _logger);
+
+        if (string.IsNullOrWhiteSpace(gestionaApiBaseUrl))
+        {
+            return ProcedureDataValueFailure(GetProcessDocumentsFailureKind.Configuration, "Gestiona API base URL is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return ProcedureDataValueFailure(GetProcessDocumentsFailureKind.Configuration, "Gestiona access token is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(referenceId))
+        {
+            return ProcedureDataValueFailure(GetProcessDocumentsFailureKind.Validation, "processId and referenceId are required.");
+        }
+
+        var result = await _gestionaApiClient.GetProcessProcedureDataValueAsync(
+            gestionaApiBaseUrl,
+            accessToken,
+            processId,
+            referenceId,
+            cancellationToken);
+
+        if (!result.Success || result.Value is null)
+        {
+            var failureKind = result.StatusCode == 404
+                ? GetProcessDocumentsFailureKind.NotFound
+                : GetProcessDocumentsFailureKind.Upstream;
+            return ProcedureDataValueFailure(
+                failureKind,
+                $"Failed to get procedure data {referenceId} from Gestiona process: {processId}.",
+                GetUpstreamErrorStatusCode(result.StatusCode));
+        }
+
+        return new GetProcessProcedureDataValueResult(
+            true,
+            GetProcessDocumentsFailureKind.None,
+            null,
+            new ProcessProcedureDataValue
+            {
+                Reference = result.Value.Reference,
+                Caption = GetPortugueseCaption(result.Value.I18nName),
+                Type = result.Value.Type,
+                Value = GetProcedureDataValue(result.Value.Value, result.Value.Type)
+            },
+            null);
+    }
+
+    /// <summary>
     /// Gets signatures for a Gestiona process document and enriches them with signer user information.
     /// </summary>
     /// <param name="processId">The Gestiona file id that contains the document.</param>
@@ -1127,6 +1258,148 @@ public sealed class GestionaProcessService : IGestionaProcessService
         int? upstreamStatusCode = null)
     {
         return new GetProcessDocumentsResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    private static GetProcessProcedureDataResult ProcedureDataFailure(
+        GetProcessDocumentsFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetProcessProcedureDataResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    private static GetProcessProcedureDataValueResult ProcedureDataValueFailure(
+        GetProcessDocumentsFailureKind failureKind,
+        string errorMessage,
+        int? upstreamStatusCode = null)
+    {
+        return new GetProcessProcedureDataValueResult(false, failureKind, errorMessage, null, upstreamStatusCode);
+    }
+
+    private static JsonElement GetProcedureDataValue(string? value, string? type)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return JsonSerializer.SerializeToElement(string.Empty);
+        }
+
+        var currentValue = value;
+        try
+        {
+            for (var depth = 0; depth < 3; depth++)
+            {
+                using var document = JsonDocument.Parse(currentValue);
+                if (document.RootElement.ValueKind == JsonValueKind.String)
+                {
+                    var decodedValue = document.RootElement.GetString();
+                    if (decodedValue is null)
+                    {
+                        return JsonSerializer.SerializeToElement(string.Empty);
+                    }
+
+                    try
+                    {
+                        using var nestedDocument = JsonDocument.Parse(decodedValue);
+                        currentValue = decodedValue;
+                        continue;
+                    }
+                    catch (JsonException)
+                    {
+                        return JsonSerializer.SerializeToElement(FormatProcedureDataDate(decodedValue, type));
+                    }
+                }
+
+                if (string.Equals(type, "DATE", StringComparison.OrdinalIgnoreCase) &&
+                    document.RootElement.ValueKind == JsonValueKind.Number)
+                {
+                    return JsonSerializer.SerializeToElement(
+                        FormatProcedureDataDate(document.RootElement.GetRawText(), type));
+                }
+
+                if (string.Equals(type, "DATE", StringComparison.OrdinalIgnoreCase) &&
+                    document.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    return FormatProcedureDataDateObject(document.RootElement);
+                }
+
+                return document.RootElement.Clone();
+            }
+        }
+        catch (JsonException)
+        {
+            return JsonSerializer.SerializeToElement(value);
+        }
+
+        return JsonSerializer.SerializeToElement(currentValue);
+    }
+
+    private static string FormatProcedureDataDate(string value, string? type)
+    {
+        if (!string.Equals(type, "DATE", StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        try
+        {
+            if (!long.TryParse(value, out var unixSeconds))
+            {
+                return value;
+            }
+
+            var normalizedDateTimestamp = checked(unixSeconds + (12 * 60 * 60));
+            return DateTimeHelpers.FormatUnixTimestamp(
+                normalizedDateTimestamp.ToString(),
+                "yyyy-MM-dd");
+        }
+        catch (Exception exception) when (
+            exception is ArgumentOutOfRangeException or OverflowException)
+        {
+            return value;
+        }
+    }
+
+    private static JsonElement FormatProcedureDataDateObject(JsonElement value)
+    {
+        var properties = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (var property in value.EnumerateObject())
+        {
+            if (string.Equals(property.Name, "date", StringComparison.OrdinalIgnoreCase) &&
+                property.Value.ValueKind is JsonValueKind.String or JsonValueKind.Number)
+            {
+                var timestamp = property.Value.ValueKind == JsonValueKind.String
+                    ? property.Value.GetString() ?? string.Empty
+                    : property.Value.GetRawText();
+                properties[property.Name] = JsonSerializer.SerializeToElement(
+                    FormatProcedureDataDate(timestamp, "DATE"));
+            }
+            else
+            {
+                properties[property.Name] = property.Value.Clone();
+            }
+        }
+
+        return JsonSerializer.SerializeToElement(properties);
+    }
+
+    private static string? GetPortugueseCaption(string? i18nName)
+    {
+        if (string.IsNullOrWhiteSpace(i18nName))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(i18nName);
+            return document.RootElement.TryGetProperty("pt_PT", out var caption)
+                ? caption.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

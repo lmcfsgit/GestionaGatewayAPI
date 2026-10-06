@@ -68,6 +68,8 @@
 - [24. POST `/queues/connectors/{connector_name}/{message_id}`](#24-post-queuesconnectorsconnector_namemessage_id)
 - [25. POST `/addon/authorizations`](#25-post-addonauthorizations)
 - [26. GET `/addon/authorizations/{auth_id}`](#26-get-addonauthorizationsauth_id)
+- [27. GET `/processes/{process_id}/procedure-data`](#27-get-processesprocess_idprocedure-data)
+- [28. GET `/processes/{process_id}/procedure-data/{reference_id}`](#28-get-processesprocess_idprocedure-datareference_id)
 
 ## Models
 
@@ -2346,3 +2348,161 @@ Gets the current state of a Gestiona add-on authorization.
 
 - HTTP `500`, `502`, or propagated upstream status code
 - A pending response without `Location`, or an authorized response without `user_id` or `access_token`, produces HTTP `502`.
+
+### 27. GET `/processes/{process_id}/procedure-data`
+
+Gets all procedure-data definitions associated with a Gestiona process.
+
+#### Route parameters
+
+- `process_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/procedure-data`
+   - The gateway follows each top-level link where `rel` is `next` until no next page is returned.
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: array of procedure-data definitions
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": [
+    {
+      "reference": "UrbanMorada",
+      "caption": "Morada",
+      "type": "ADDRESS"
+    }
+  ]
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, `502`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessDocumentsError`
+
+#### Notes
+
+- `caption` is read from the `pt_PT` property inside the upstream `i18n_name` JSON string.
+- If `process_id` is empty or contains the unresolved value `{{process_id}}`, the endpoint returns HTTP `400`.
+- If the upstream response contains no procedure-data definitions, `result` is an empty array.
+
+### 28. GET `/processes/{process_id}/procedure-data/{reference_id}`
+
+Gets one procedure-data definition and its value from a Gestiona process.
+
+#### Route parameters
+
+- `process_id` required
+- `reference_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body model
+
+- none
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/procedure-data/{reference_id}`
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` contains `reference`, `caption`, `type`, and an always-present `value` property
+
+#### Object value example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "reference": "UrbanMorada",
+    "caption": "Morada",
+    "type": "ADDRESS",
+    "value": {
+      "country": "PRT",
+      "province": "PORTO",
+      "town": "Vila Nova de Gaia",
+      "town_code": "1317",
+      "parish_code": "131727",
+      "zip_code": "4400527",
+      "type_of_road": "BL",
+      "address": "Transparente",
+      "number": "23",
+      "block": "33",
+      "stair": "44",
+      "floor": "55",
+      "door": "66",
+      "extension": "77"
+    }
+  }
+}
+```
+
+#### Simple value example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "reference": "decisao",
+    "caption": "Decisão",
+    "type": "TEXT",
+    "value": "Deferido"
+  }
+}
+```
+
+#### DATE value example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "reference": "cabimento_data_emissao",
+    "caption": "Data Emissao de Cabimento",
+    "type": "DATE",
+    "value": {
+      "date": "2026-10-02"
+    }
+  }
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, `502`, or propagated upstream status code
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessDocumentsError`
+
+#### Notes
+
+- Gestiona may encode `value` as nested JSON strings. The gateway decodes these layers before returning the value.
+- If the decoded value is an object, `value` is returned as that object. Simple strings, numbers, booleans, arrays, and null values retain their JSON type.
+- If Gestiona omits `value` or returns an empty value, the gateway returns `"value": ""`.
+- For type `DATE`, Unix timestamps are formatted as `yyyy-MM-dd`. A `date` property inside an object value is formatted in the same way.
+- If either route parameter is empty, or contains the unresolved values `{{process_id}}` or `{{reference_id}}`, the endpoint returns HTTP `400`.

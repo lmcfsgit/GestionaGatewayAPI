@@ -16,6 +16,11 @@ namespace GestionaGateway.Core.Models;
 public sealed record ThirdDefaultAddress(
     [property: JsonPropertyName("address")] string? Address,
     [property: JsonPropertyName("number")] string? Number,
+    [property: JsonPropertyName("block")] string? Block,
+    [property: JsonPropertyName("stair")] string? Stair,
+    [property: JsonPropertyName("floor")] string? Floor,
+    [property: JsonPropertyName("door")] string? Door,
+    [property: JsonPropertyName("extension")] string? Extension,
     [property: JsonPropertyName("zip_code")] string? ZipCode,
     [property: JsonPropertyName("province")] string? Province,
     [property: JsonPropertyName("country")] string? Country,

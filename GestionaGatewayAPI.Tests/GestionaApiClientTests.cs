@@ -828,6 +828,113 @@ public sealed class GestionaApiClientTests
         Assert.Empty(result.Value!);
     }
 
+    [Fact]
+    public async Task GetProcessProcedureDataAsync_FollowsNextLinksAndAggregatesPages()
+    {
+        var requestedUris = new List<string>();
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            requestedUris.Add(request.RequestUri!.ToString());
+            var responseJson = requestedUris.Count == 1
+                ? """
+                    {
+                      "content": [
+                        {
+                          "reference": "field-1",
+                          "i18n_name": "{\"pt_PT\":\"Primeiro campo\"}",
+                          "type": "TEXT"
+                        }
+                      ],
+                      "links": [
+                        {
+                          "rel": "next",
+                          "href": "https://gestiona.example/rest/files/file-123/procedure-data?page=2"
+                        }
+                      ]
+                    }
+                    """
+                : """
+                    {
+                      "content": [
+                        {
+                          "reference": "field-2",
+                          "i18n_name": "{\"pt_PT\":\"Segundo campo\"}",
+                          "type": "NUMERIC"
+                        }
+                      ],
+                      "links": []
+                    }
+                    """;
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(
+            new StubHttpClientFactory(handler),
+            NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.GetProcessProcedureDataAsync(
+            "https://gestiona.example/rest",
+            "token",
+            "file-123",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(
+            [
+                "https://gestiona.example/rest/files/file-123/procedure-data",
+                "https://gestiona.example/rest/files/file-123/procedure-data?page=2"
+            ],
+            requestedUris);
+        Assert.Collection(
+            result.Value!,
+            item => Assert.Equal(("field-1", "{\"pt_PT\":\"Primeiro campo\"}", "TEXT"), (item.Reference, item.I18nName, item.Type)),
+            item => Assert.Equal(("field-2", "{\"pt_PT\":\"Segundo campo\"}", "NUMERIC"), (item.Reference, item.I18nName, item.Type)));
+    }
+
+    [Fact]
+    public async Task GetProcessProcedureDataValueAsync_GetsRequestedReference()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            capturedRequest = request;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """
+                    {
+                      "reference": "UrbanMorada",
+                      "i18n_name": "{\"pt_PT\":\"Morada\"}",
+                      "type": "ADDRESS",
+                      "value": "\"{\\\"country\\\":\\\"PRT\\\"}\""
+                    }
+                    """,
+                    Encoding.UTF8,
+                    "application/json")
+            };
+        });
+        var client = new GestionaApiClient(
+            new StubHttpClientFactory(handler),
+            NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.GetProcessProcedureDataValueAsync(
+            "https://gestiona.example/rest",
+            "token",
+            "file/123",
+            "Urban Morada",
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(
+            "https://gestiona.example/rest/files/file%2F123/procedure-data/Urban%20Morada",
+            capturedRequest!.RequestUri!.AbsoluteUri);
+        Assert.Equal("UrbanMorada", result.Value!.Reference);
+        Assert.Equal("\"{\\\"country\\\":\\\"PRT\\\"}\"", result.Value.Value);
+    }
+
     private sealed class StubHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);

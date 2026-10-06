@@ -651,6 +651,173 @@ public sealed class GestionaProcessServiceTests
     }
 
     [Fact]
+    public async Task GetProcessProcedureDataAsync_MapsPortugueseCaption()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessProcedureDataAsyncHandler = (baseUrl, token, processId, cancellationToken) =>
+            {
+                IReadOnlyList<ProcessProcedureDataDefinition> definitions =
+                [
+                    new("field-1", "{\"pt_PT\":\"Descrição\"}", "TEXT")
+                ];
+                return Task.FromResult(
+                    new GestionaApiCallResult<IReadOnlyList<ProcessProcedureDataDefinition>>(
+                        200,
+                        true,
+                        definitions));
+            }
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessProcedureDataAsync(
+            "file-123",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        var item = Assert.Single(result.ProcedureData!);
+        Assert.Equal("field-1", item.Reference);
+        Assert.Equal("Descrição", item.Caption);
+        Assert.Equal("TEXT", item.Type);
+    }
+
+    [Fact]
+    public async Task GetProcessProcedureDataValueAsync_ReturnsDecodedValueObject()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessProcedureDataValueAsyncHandler = (baseUrl, token, processId, referenceId, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<ProcessProcedureDataDefinition?>(
+                    200,
+                    true,
+                    new ProcessProcedureDataDefinition(
+                        "UrbanMorada",
+                        "{\"pt_PT\":\"Morada\"}",
+                        "ADDRESS",
+                        "\"{\\\"country\\\":\\\"PRT\\\",\\\"number\\\":\\\"23\\\"}\"")))
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessProcedureDataValueAsync(
+            "file-123",
+            "UrbanMorada",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("UrbanMorada", result.ProcedureData!.Reference);
+        Assert.Equal("Morada", result.ProcedureData.Caption);
+        Assert.Equal("ADDRESS", result.ProcedureData.Type);
+        Assert.Equal("PRT", result.ProcedureData.Value.GetProperty("country").GetString());
+        Assert.Equal("23", result.ProcedureData.Value.GetProperty("number").GetString());
+    }
+
+    [Fact]
+    public async Task GetProcessProcedureDataValueAsync_ReturnsDecodedScalarAsValue()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessProcedureDataValueAsyncHandler = (baseUrl, token, processId, referenceId, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<ProcessProcedureDataDefinition?>(
+                    200,
+                    true,
+                    new ProcessProcedureDataDefinition(
+                        "Decision",
+                        "{\"pt_PT\":\"Decisão\"}",
+                        "TEXT",
+                        "\"\\\"Deferido\\\"\"")))
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessProcedureDataValueAsync(
+            "file-123",
+            "Decision",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("Deferido", result.ProcedureData!.Value.GetString());
+    }
+
+    [Fact]
+    public async Task GetProcessProcedureDataValueAsync_WhenValueIsMissing_ReturnsEmptyString()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessProcedureDataValueAsyncHandler = (baseUrl, token, processId, referenceId, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<ProcessProcedureDataDefinition?>(
+                    200,
+                    true,
+                    new ProcessProcedureDataDefinition("Decision", "{\"pt_PT\":\"Decisão\"}", "TEXT")))
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessProcedureDataValueAsync(
+            "file-123",
+            "Decision",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(string.Empty, result.ProcedureData!.Value.GetString());
+    }
+
+    [Fact]
+    public async Task GetProcessProcedureDataValueAsync_WhenTypeIsDate_ReturnsPortugueseDate()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessProcedureDataValueAsyncHandler = (baseUrl, token, processId, referenceId, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<ProcessProcedureDataDefinition?>(
+                    200,
+                    true,
+                    new ProcessProcedureDataDefinition(
+                        "DecisionDate",
+                        "{\"pt_PT\":\"Data da decisão\"}",
+                        "DATE",
+                        "\"1790899200\"")))
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessProcedureDataValueAsync(
+            "file-123",
+            "DecisionDate",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("2026-10-02", result.ProcedureData!.Value.GetString());
+    }
+
+    [Fact]
+    public async Task GetProcessProcedureDataValueAsync_WhenDateValueIsObject_FormatsNestedDate()
+    {
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessProcedureDataValueAsyncHandler = (baseUrl, token, processId, referenceId, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<ProcessProcedureDataDefinition?>(
+                    200,
+                    true,
+                    new ProcessProcedureDataDefinition(
+                        "cabimento_data_emissao",
+                        "{\"pt_PT\":\"Data Emissao de Cabimento\"}",
+                        "DATE",
+                        "\"{\\\"date\\\":\\\"1790888400\\\"}\"")))
+        };
+        var service = CreateService(apiClient);
+
+        var result = await service.GetProcessProcedureDataValueAsync(
+            "file-123",
+            "cabimento_data_emissao",
+            accessTokenOverride: null,
+            CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal("2026-10-02", result.ProcedureData!.Value.GetProperty("date").GetString());
+    }
+
+    [Fact]
     public async Task GetProcessAssigneeGroupsAsync_ReturnsGroups()
     {
         var apiClient = new TestGestionaApiClient
