@@ -5,6 +5,15 @@ namespace GestionaGateway.Core.Models;
 /// </summary>
 public sealed record CreateDocumentInFileRequest
 {
+    /// <summary>Gets the elaboration state sent to Gestiona.</summary>
+    public string ElaborationState { get; init; } = "EE01";
+
+    /// <summary>Gets the metadata type sent to Gestiona.</summary>
+    public string MetadataType { get; init; } = "TD99";
+
+    /// <summary>Gets the optional metadata subtype sent to Gestiona.</summary>
+    public string? MetadataSubtype { get; init; }
+
     /// <summary>
     /// Gets the document or folder name.
     /// </summary>

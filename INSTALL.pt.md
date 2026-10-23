@@ -3,6 +3,14 @@
 Este guia descreve como instalar ou atualizar um pacote publicado da Gestiona
 Gateway API como um site do IIS, utilizando o `Install-IIS.ps1`.
 
+## Índice
+
+- [Requisitos](#requisitos)
+- [Instalação](#instalação)
+- [Atualização](#atualização)
+- [Configuração](#configuração)
+- [Verificar a instalação](#verificar-a-instalação)
+
 ## Requisitos
 
 - Uma instalação suportada do Windows ou Windows Server com o IIS ativado.

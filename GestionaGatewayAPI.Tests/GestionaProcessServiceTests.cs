@@ -11,6 +11,30 @@ namespace GestionaGatewayAPI.Tests;
 
 public sealed class GestionaProcessServiceTests
 {
+    [Theory]
+    [InlineData("{}", "EE01", "TD99", null)]
+    [InlineData("{\"elaboration_state\":null,\"metadata_type\":null}", "EE01", "TD99", null)]
+    [InlineData("{\"elaboration_state\":\"EE02\",\"metadata_type\":\"TD01\",\"metadata_subtype\":\"subtype\"}", "EE02", "TD01", "subtype")]
+    public async Task CreateDocumentInProcessAsync_MapsOptionalMetadata(string json, string state, string type, string? subtype)
+    {
+        CreateDocumentInFileRequest? captured = null;
+        var apiClient = new TestGestionaApiClient
+        {
+            CreateDocumentUrlAsyncHandler = (baseUrl, token, fileId, folderId, request, cancellationToken) =>
+            {
+                captured = request;
+                return Task.FromResult(new GestionaApiCallResult<CreateDocumentAndFolderResponse?>(400, false, null));
+            }
+        };
+        var upload = System.Text.Json.JsonSerializer.Deserialize<UploadDocumentRequest>(json)!;
+        await CreateService(apiClient).CreateDocumentInProcessAsync(upload, "file-123", null, false, string.Empty, null, CancellationToken.None);
+
+        Assert.NotNull(captured);
+        Assert.Equal(state, captured.ElaborationState);
+        Assert.Equal(type, captured.MetadataType);
+        Assert.Equal(subtype, captured.MetadataSubtype);
+    }
+
     [Fact]
     public async Task CreateDocumentInProcessAsync_WhenGestionaRejectsDocument_ConcatenatesResponseDetails()
     {

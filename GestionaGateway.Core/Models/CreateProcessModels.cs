@@ -68,6 +68,9 @@ public sealed record SelectableTitlesResponse
 
 public sealed record OpenProcessFileResponse
 {
+    [JsonPropertyName("details")]
+    public IReadOnlyList<string>? Details { get; init; }
+
     [JsonPropertyName("id")]
     public string? Id { get; init; }
 

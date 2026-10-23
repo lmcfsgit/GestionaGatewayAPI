@@ -35,9 +35,11 @@ the existing website. It preserves logs, appsettings*.json, and web.config, and
 restores the previous application if deployment fails.
 #>
 
+#requires -Version 4.0
+
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
     [string]$ZipPath,
 
@@ -191,7 +193,8 @@ function Invoke-IisInstallation {
     try {
         # Extract to a unique staging directory and locate the published app root.
         New-Item -ItemType Directory -Path $stagingPath -Force | Out-Null
-        Expand-Archive -LiteralPath $resolvedZipPath -DestinationPath $stagingPath
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($resolvedZipPath, $stagingPath)
 
         $applicationDlls = @(
             Get-ChildItem -LiteralPath $stagingPath -Filter "$applicationName.dll" -File -Recurse
@@ -373,7 +376,7 @@ function Invoke-IisInstallation {
 # IIS configuration requires an elevated PowerShell session.
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+    $principal = New-Object -TypeName Security.Principal.WindowsPrincipal -ArgumentList $identity
     return $principal.IsInRole(
         [Security.Principal.WindowsBuiltInRole]::Administrator)
 }
@@ -382,10 +385,10 @@ function Test-IsAdministrator {
 # files are placed directly in the installation root.
 function Copy-ApplicationContent {
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory = $true)]
         [string]$Source,
 
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory = $true)]
         [string]$Destination
     )
 
@@ -396,7 +399,7 @@ function Copy-ApplicationContent {
 # Preserve logs while removing all replaceable application content.
 function Remove-ApplicationContent {
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory = $true)]
         [string]$Path
     )
 

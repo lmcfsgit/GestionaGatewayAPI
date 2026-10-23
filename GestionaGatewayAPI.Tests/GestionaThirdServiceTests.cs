@@ -38,6 +38,11 @@ public sealed class GestionaThirdServiceTests
                     NifType: "OWN",
                     Address: null,
                     Number: null,
+                    Block: null,
+                    Stair: null,
+                    Floor: null,
+                    Door: null,
+                    Extension: null,
                     ZipCode: null,
                     Province: null,
                     Country: null,
@@ -50,6 +55,11 @@ public sealed class GestionaThirdServiceTests
                 return Task.FromResult(new GestionaApiCallResult<ThirdDefaultAddress?>(200, true, new ThirdDefaultAddress(
                     "Rua das Cancelas",
                     "184",
+                    "A",
+                    "1",
+                    "2",
+                    "D",
+                    "Frente",
                     "4440368",
                     "PORTO",
                     "Portugal",
@@ -76,6 +86,11 @@ public sealed class GestionaThirdServiceTests
         Assert.Equal("Luis", result.Third.FirstName);
         Assert.Equal("Fernandes", result.Third.SecondSurname);
         Assert.Equal("Rua das Cancelas", result.Third.Address);
+        Assert.Equal("A", result.Third.Block);
+        Assert.Equal("1", result.Third.Stair);
+        Assert.Equal("2", result.Third.Floor);
+        Assert.Equal("D", result.Third.Door);
+        Assert.Equal("Frente", result.Third.Extension);
         Assert.Equal("4440368", result.Third.ZipCode);
         Assert.Equal("CL", result.Third.TypeOfRoad);
         Assert.Equal("Norte", result.Third.Zone);
@@ -133,6 +148,11 @@ public sealed class GestionaThirdServiceTests
                     NifType: "OWN",
                     Address: null,
                     Number: null,
+                    Block: null,
+                    Stair: null,
+                    Floor: null,
+                    Door: null,
+                    Extension: null,
                     ZipCode: null,
                     Province: null,
                     Country: null,

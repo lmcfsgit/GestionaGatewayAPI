@@ -1,6 +1,6 @@
 # Gestiona Gateway API Documentation
 
-<center>Versão 1.9.0</center>
+<center>Versão 1.9.5</center>
 
 ## Index
 
@@ -110,7 +110,7 @@ Authorized:
 
 ### UploadDocumentRequest
 
-Used as the request body for both upload endpoints.
+Used as the request body for all upload endpoints.
 
 ```json
 {
@@ -120,7 +120,10 @@ Used as the request body for both upload endpoints.
   "fileName": "string | null",
   "documentSourceType": "string | null",
   "url": "string | null",
-  "content": "string | null"
+  "content": "string | null",
+  "elaboration_state": "string | null",
+  "metadata_type": "string | null",
+  "metadata_subtype": "string | null"
 }
 ```
 
@@ -134,6 +137,14 @@ Used as the request body for both upload endpoints.
   Base64-encoded file content for DIGITAL uploads.
 - `url`
   External URL used when `documentSourceType` is `EXTERNAL_URL`.
+- `elaboration_state`
+  Optional. Defaults to `EE01` when omitted or null.
+- `metadata_type`
+  Optional. Defaults to `TD99` when omitted or null.
+- `metadata_subtype`
+  Optional. When omitted or null, this field is not sent to Gestiona.
+
+These three fields are forwarded to the Gestiona document-creation call for `DIGITAL` and `EXTERNAL_URL` requests. They are not included in folder-creation payloads.
 
 ### CreateProcessRequest
 
@@ -273,6 +284,11 @@ Used inside `GatewayResponse.result` on third lookup success.
   "nif_type": "string | null",
   "address": "string | null",
   "number": "string | null",
+  "block": "string | null",
+  "stair": "string | null",
+  "floor": "string | null",
+  "door": "string | null",
+  "extension": "string | null",
   "zip_code": "string | null",
   "province": "string | null",
   "country": "string | null",
@@ -285,6 +301,7 @@ Used inside `GatewayResponse.result` on third lookup success.
 #### Field notes
 
 - Address fields are obtained from Gestiona `GET /thirds/{third_id}/default-address` after the base third is retrieved.
+- `block`, `stair`, `floor`, `door`, and `extension` are mapped from the corresponding fields in the default-address response.
 
 ### ThirdError
 
@@ -938,6 +955,8 @@ Creates a document by resolving the target Gestiona process_id (file id in gesti
 
 - `UploadDocumentRequest`
 
+For `DIGITAL` and `EXTERNAL_URL` documents, `elaboration_state` defaults to `EE01`, `metadata_type` defaults to `TD99`, and `metadata_subtype` is sent only when provided with a non-null value. All three fields are optional.
+
 #### Request body examples
 
 `DIGITAL`
@@ -948,6 +967,8 @@ Creates a document by resolving the target Gestiona process_id (file id in gesti
   "name": "Contrato",
   "fileName": "contrato.pdf",
   "documentSourceType": "DIGITAL",
+  "elaboration_state": "EE01",
+  "metadata_type": "TD99",
   "content": "JVBERi0xLjQKJ..."
 }
 ```
@@ -1039,6 +1060,8 @@ Creates a document directly in the Gestiona file identified by `process_id`.
 
 - `UploadDocumentRequest`
 
+For `DIGITAL` and `EXTERNAL_URL` documents, `elaboration_state` defaults to `EE01`, `metadata_type` defaults to `TD99`, and `metadata_subtype` is sent only when provided with a non-null value. All three fields are optional.
+
 #### Request body examples
 
 `DIGITAL`
@@ -1049,6 +1072,8 @@ Creates a document directly in the Gestiona file identified by `process_id`.
   "name": "Contrato",
   "fileName": "contrato.pdf",
   "documentSourceType": "DIGITAL",
+  "elaboration_state": "EE01",
+  "metadata_type": "TD99",
   "content": "JVBERi0xLjQKJ..."
 }
 ```
@@ -1121,6 +1146,8 @@ Creates a document inside the Gestiona folder identified by `folder_id`, after r
 
 - `UploadDocumentRequest`
 
+For `DIGITAL` and `EXTERNAL_URL` documents, `elaboration_state` defaults to `EE01`, `metadata_type` defaults to `TD99`, and `metadata_subtype` is sent only when provided with a non-null value. All three fields are optional.
+
 #### Request body examples
 
 `DIGITAL`
@@ -1131,6 +1158,8 @@ Creates a document inside the Gestiona folder identified by `folder_id`, after r
   "name": "Contrato",
   "fileName": "contrato.pdf",
   "documentSourceType": "DIGITAL",
+  "elaboration_state": "EE01",
+  "metadata_type": "TD99",
   "content": "JVBERi0xLjQKJ..."
 }
 ```
@@ -1200,6 +1229,8 @@ Creates a document directly inside the Gestiona folder identified by `folder_id`
 
 - `UploadDocumentRequest`
 
+For `DIGITAL` and `EXTERNAL_URL` documents, `elaboration_state` defaults to `EE01`, `metadata_type` defaults to `TD99`, and `metadata_subtype` is sent only when provided with a non-null value. All three fields are optional.
+
 #### Request body examples
 
 `DIGITAL`
@@ -1210,6 +1241,8 @@ Creates a document directly inside the Gestiona folder identified by `folder_id`
   "name": "Contrato",
   "fileName": "contrato.pdf",
   "documentSourceType": "DIGITAL",
+  "elaboration_state": "EE01",
+  "metadata_type": "TD99",
   "content": "JVBERi0xLjQKJ..."
 }
 ```
@@ -1894,6 +1927,11 @@ Gets a third from Gestiona by resolving the third id from a NIF, then enriches i
     "nif_type": "OWN",
     "address": "Rua das Cancelas",
     "number": "184",
+    "block": "A",
+    "stair": "1",
+    "floor": "2",
+    "door": "D",
+    "extension": "Frente",
     "zip_code": "4440368",
     "province": "PORTO",
     "country": "Portugal",
@@ -1963,6 +2001,11 @@ Gets a third from Gestiona and enriches it with the default address.
     "nif_type": "OWN",
     "address": "Rua das Cancelas",
     "number": "184",
+    "block": "A",
+    "stair": "1",
+    "floor": "2",
+    "door": "D",
+    "extension": "Frente",
     "zip_code": "4440368",
     "province": "PORTO",
     "country": "Portugal",

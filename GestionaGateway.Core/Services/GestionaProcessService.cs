@@ -122,6 +122,9 @@ public sealed class GestionaProcessService : IGestionaProcessService
         var createDocumentRequest = new CreateDocumentInFileRequest
         {
             Name = documentName,
+            ElaborationState = request.ElaborationState ?? "EE01",
+            MetadataType = request.MetadataType ?? "TD99",
+            MetadataSubtype = request.MetadataSubtype,
             MetadataLanguage = "PT", // Is this important to set? Should it be configurable?
             // Trashed = "false",
             // Version = "1" // ?? Is this required for creation? Should it be configurable?
@@ -1895,7 +1898,7 @@ public sealed class GestionaProcessService : IGestionaProcessService
             GroupHref = ResolveResourceHref(gestionaApiBaseUrl, "groups", request.GroupId!)
         };
 
-        var openFileResult = await _gestionaApiClient.OpenProcessFileAsync(
+        GestionaApiCallResult<OpenProcessFileResponse?> openFileResult = await _gestionaApiClient.OpenProcessFileAsync(
             gestionaApiBaseUrl,
             accessToken,
             fileOpenHref,
@@ -1904,9 +1907,14 @@ public sealed class GestionaProcessService : IGestionaProcessService
 
         if (!openFileResult.Success || openFileResult.Value is null)
         {
+            var details = openFileResult.Value?.Details?
+                .Where(detail => !string.IsNullOrWhiteSpace(detail))
+                .ToArray();
             return CreateProcessFailure(
                 CreateProcessFailureKind.Upstream,
-                "Failed to open Gestiona process file.",
+                details is { Length: > 0 }
+                    ? string.Join("; ", details)
+                    : "Failed to open Gestiona process file.",
                 GetUpstreamErrorStatusCode(openFileResult.StatusCode));
         }
 

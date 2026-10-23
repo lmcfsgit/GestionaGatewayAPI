@@ -2,6 +2,20 @@
 
 All notable changes to Gestiona Gateway API are documented in this file.
 
+## [1.9.5]
+
+### Added
+
+### Changed
+
+- The documents upload has 3 new fields: elaboration_state, metadata_type and metadata_subtype
+
+### Fixed
+
+- A full separation of Gestiona upstream calls are now separated in their own file grouped by
+  their corresponding service.
+- When there is an error opening a recent created process, it returns the details messages from the error response of the gestiona api call.
+
 ## [1.9.4]
 
 ### Added

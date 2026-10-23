@@ -9,6 +9,67 @@ namespace GestionaGatewayAPI.Tests;
 
 public sealed class GestionaApiClientTests
 {
+    [Theory]
+    [InlineData(false, null)]
+    [InlineData(false, "custom-subtype")]
+    [InlineData(true, null)]
+    [InlineData(true, "custom-subtype")]
+    public async Task CreateDocument_SendsMetadataAndOmitsMissingSubtype(bool digital, string? subtype)
+    {
+        string? body = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.Created)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+        var request = new CreateDocumentInFileRequest { Name = "Document", MetadataSubtype = subtype };
+
+        if (digital)
+            await client.CreateDocumentAndFolderAsync("https://gestiona.example/rest", "token", "file-123", null, request, CancellationToken.None);
+        else
+            await client.CreateDocumentUrlAsync("https://gestiona.example/rest", "token", "file-123", null, request, CancellationToken.None);
+
+        using var json = System.Text.Json.JsonDocument.Parse(body!);
+        Assert.Equal("EE01", json.RootElement.GetProperty("elaboration_state").GetString());
+        Assert.Equal("TD99", json.RootElement.GetProperty("metadata_type").GetString());
+        Assert.Equal(subtype is not null, json.RootElement.TryGetProperty("metadata_subtype", out var value));
+        if (subtype is not null)
+            Assert.Equal(subtype, value.GetString());
+    }
+
+    [Fact]
+    public async Task OpenProcessFileAsync_WhenUpstreamFails_ReturnsDetails()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent(
+                """{"details":["The file is locked.","Opening is not allowed."]}""",
+                Encoding.UTF8,
+                "application/json")
+        });
+        var client = new GestionaApiClient(
+            new StubHttpClientFactory(handler),
+            NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.OpenProcessFileAsync(
+            "https://gestiona.example/rest", "token", "files/file-123/open",
+            new OpenProcessFileRequest
+            {
+                EntryDate = "1787608800",
+                FreeTitle = "Subject",
+                UserHref = "https://gestiona.example/rest/users/user-1",
+                GroupHref = "https://gestiona.example/rest/groups/group-1"
+            }, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal(["The file is locked.", "Opening is not allowed."], result.Value!.Details);
+    }
+
     [Fact]
     public async Task CreateDocumentUrlAsync_WhenUpstreamFails_ReturnsResponseDetails()
     {

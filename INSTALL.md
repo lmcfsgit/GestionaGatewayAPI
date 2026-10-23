@@ -10,7 +10,8 @@ IIS website using `Install-IIS.ps1`.
   `WebAdministration` module.
 - The .NET 8 Hosting Bundle, including ASP.NET Core Module V2. Restart IIS after
   installing the bundle.
-- Windows PowerShell running as Administrator.
+- Windows PowerShell 4.0 or 5.x running as Administrator. ZIP extraction uses
+  the .NET Framework 4.5 or later ZIP APIs.
 - A ZIP containing the published application. It must contain exactly one
   `GestionaGatewayAPI.dll` and a `web.config` in the published application
   directory.

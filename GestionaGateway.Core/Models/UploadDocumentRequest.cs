@@ -7,6 +7,18 @@ namespace GestionaGateway.Core.Models;
 /// </summary>
 public sealed class UploadDocumentRequest
 {
+    /// <summary>Gets the elaboration state, defaulting to EE01 when omitted.</summary>
+    [JsonPropertyName("elaboration_state")]
+    public string? ElaborationState { get; init; } = "EE01";
+
+    /// <summary>Gets the metadata type, defaulting to TD99 when omitted.</summary>
+    [JsonPropertyName("metadata_type")]
+    public string? MetadataType { get; init; } = "TD99";
+
+    /// <summary>Gets the optional metadata subtype.</summary>
+    [JsonPropertyName("metadata_subtype")]
+    public string? MetadataSubtype { get; init; }
+
     /// <summary>
     /// Gets the optional operation identifier echoed in the gateway response envelope.
     /// </summary>
