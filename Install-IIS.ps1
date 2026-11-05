@@ -82,6 +82,8 @@ $installDirectoryCreated = $false
 $installPathInitiallyExisted = $false
 $isUpdate = $Operation -eq "Update"
 $updateDeploymentStarted = $false
+$updateShutdownStarted = $false
+$preserveBackup = $false
 $backupCreated = $false
 $websiteWasStarted = $false
 $applicationPoolWasStarted = $false
@@ -118,6 +120,10 @@ function Invoke-IisInstallation {
 
     # Load the IIS provider and management cmdlets.
     Import-Module WebAdministration -ErrorAction Stop
+
+    if ($isUpdate) {
+        Initialize-IisAdministrationAssembly
+    }
 
     # ASP.NET Core applications hosted in IIS require the Hosting Bundle module.
     $aspNetCoreModule = Get-WebGlobalModule -Name "AspNetCoreModuleV2" -ErrorAction SilentlyContinue
@@ -226,14 +232,13 @@ function Invoke-IisInstallation {
 
             # Record the original states before stopping IIS so they can be restored
             # after either a successful deployment or a rollback.
-            $updateDeploymentStarted = $true
+            $updateShutdownStarted = $true
             if ($websiteWasStarted) {
                 Stop-Website -Name $SiteName
             }
-            if ($applicationPoolWasStarted) {
-                Stop-WebAppPool -Name $applicationPoolName
-            }
+            Stop-ApplicationPoolAndWait -Name $applicationPoolName
 
+            $updateDeploymentStarted = $true
             Remove-ApplicationContent -Path $resolvedInstallPath
             Copy-ApplicationContent -Source $publishedRoot -Destination $resolvedInstallPath
 
@@ -307,6 +312,14 @@ function Invoke-IisInstallation {
     catch {
         $deploymentError = $_
 
+        if ($isUpdate -and $updateShutdownStarted -and -not $updateDeploymentStarted) {
+            # Shutdown failed before any application files were replaced.
+            if ($websiteWasStarted) {
+                Start-Website -Name $SiteName
+            }
+            throw $deploymentError
+        }
+
         # Once an update has started replacing files, recover the previous snapshot
         # and service states before returning the original deployment error.
         if ($isUpdate -and $updateDeploymentStarted) {
@@ -314,9 +327,7 @@ function Invoke-IisInstallation {
                 if ((Get-Website -Name $SiteName).State -eq "Started") {
                     Stop-Website -Name $SiteName
                 }
-                if ((Get-WebAppPoolState -Name $applicationPoolName).Value -eq "Started") {
-                    Stop-WebAppPool -Name $applicationPoolName
-                }
+                Stop-ApplicationPoolAndWait -Name $applicationPoolName
 
                 Restore-ApplicationBackup
 
@@ -330,7 +341,8 @@ function Invoke-IisInstallation {
                 Write-Warning "The update failed and the previous application version was restored."
             }
             catch {
-                throw "Update failed: $($deploymentError.Exception.Message) Rollback also failed: $($_.Exception.Message)"
+                $preserveBackup = $true
+                throw "Update failed: $($deploymentError.Exception.Message) Rollback also failed: $($_.Exception.Message) Backup retained at: $backupPath"
             }
 
             throw $deploymentError
@@ -362,14 +374,83 @@ function Invoke-IisInstallation {
         throw
     }
     finally {
-        # Temporary package and backup data are never needed after this invocation,
-        # regardless of whether deployment or rollback succeeded.
+        # Keep the backup for manual recovery if rollback failed.
         if (Test-Path -LiteralPath $stagingPath) {
             Remove-Item -LiteralPath $stagingPath -Recurse -Force
         }
-        if (Test-Path -LiteralPath $backupPath) {
+        if (-not $preserveBackup -and (Test-Path -LiteralPath $backupPath)) {
             Remove-Item -LiteralPath $backupPath -Recurse -Force
         }
+    }
+}
+
+function Initialize-IisAdministrationAssembly {
+    if ("Microsoft.Web.Administration.ServerManager" -as [type]) {
+        return
+    }
+
+    try {
+        Add-Type -AssemblyName Microsoft.Web.Administration -ErrorAction Stop
+    }
+    catch {
+        $assemblyPath = Join-Path $env:windir "System32\inetsrv\Microsoft.Web.Administration.dll"
+        if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+            $assemblyPath = Join-Path $env:windir "Sysnative\inetsrv\Microsoft.Web.Administration.dll"
+        }
+        if (-not (Test-Path -LiteralPath $assemblyPath)) {
+            throw "Cannot find the IIS management assembly at '$assemblyPath'. Install IIS Management Scripts and Tools and run this script in Windows PowerShell."
+        }
+        Add-Type -Path $assemblyPath -ErrorAction Stop
+    }
+
+    if (-not ("Microsoft.Web.Administration.ServerManager" -as [type])) {
+        throw "The IIS management assembly was loaded, but ServerManager is unavailable. Run this script in Windows PowerShell with IIS Management Scripts and Tools installed."
+    }
+}
+
+# Wait for IIS state and worker exit before touching deployed files.
+function Stop-ApplicationPoolAndWait {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [ValidateRange(1, 3600)]
+        [int]$TimeoutSeconds = 90
+    )
+
+    $workerIds = @{}
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $stopRequested = $false
+    while ($true) {
+        $manager = New-Object Microsoft.Web.Administration.ServerManager
+        try {
+            $workers = @($manager.WorkerProcesses | Where-Object { $_.AppPoolName -eq $Name })
+            foreach ($worker in $workers) {
+                $workerIds[[int]$worker.ProcessId] = $true
+            }
+        }
+        finally {
+            $manager.Dispose()
+        }
+
+        $state = (Get-WebAppPoolState -Name $Name).Value
+        if (-not $stopRequested -and $state -ne "Stopped" -and $state -ne "Stopping") {
+            Stop-WebAppPool -Name $Name
+            $stopRequested = $true
+        }
+
+        $remainingWorkers = @($workerIds.Keys | ForEach-Object {
+            Get-Process -Id $_ -ErrorAction SilentlyContinue
+        })
+        if ($state -eq "Stopped" -and $workers.Count -eq 0 -and $remainingWorkers.Count -eq 0) {
+            return
+        }
+
+        if ($timer.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
+            throw "Timed out after $TimeoutSeconds seconds waiting for application pool '$Name' and its worker processes to stop. No files will be replaced by this operation. Pool state: $state. Investigate IIS shutdown before retrying."
+        }
+
+        Start-Sleep -Milliseconds 500
     }
 }
 

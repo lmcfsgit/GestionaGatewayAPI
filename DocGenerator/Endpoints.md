@@ -1,6 +1,6 @@
 # Gestiona Gateway API Documentation
 
-<center>Versão 1.9.5</center>
+<center>Versão 2.0.1</center>
 
 ## Index
 
@@ -42,36 +42,38 @@
 
 ### Endpoints
 
-- [1. POST `/processes`](#1-post-processes)
-- [2. POST `/processes/related`](#2-post-processesrelated)
-- [3. GET `/processes/{process_id}/related`](#3-get-processesprocess_idrelated)
-- [4. DELETE `/processes/{process_id}/related/{related_process_id}`](#4-delete-processesprocess_idrelatedrelated_process_id)
-- [5. GET `/processes?process_number=<numero>`](#5-get-processesprocess_numbernumero)
-- [6. POST `/processes/documents?process_number=<numero>`](#6-post-processesdocumentsprocess_numbernumero)
-- [7. POST `/processes/{process_id}/documents`](#7-post-processesprocess_iddocuments)
-- [8. POST `/processes/documents/{folder_id}?process_number=<numero>`](#8-post-processesdocumentsfolder_idprocess_numbernumero)
-- [9. POST `/processes/{process_id}/documents/{folder_id}`](#9-post-processesprocess_iddocumentsfolder_id)
-- [10. GET `/processes/thirds?process_number=<numero>`](#10-get-processesthirdsprocess_numbernumero)
-- [11. GET `/processes/{process_id}/thirds`](#11-get-processesprocess_idthirds)
-- [12. GET `/processes/{process_id}/documents/children`](#12-get-processesprocess_iddocumentschildren)
-- [13. GET `/processes/{process_id}/documents/{document_id}/children`](#13-get-processesprocess_iddocumentsdocument_idchildren)
-- [Document metadata](#document-metadata)
-- [Update document metadata](#update-document-metadata)
-- [14. GET `/processes/{process_id}/documents/{document_id}/signatures`](#14-get-processesprocess_iddocumentsdocument_idsignatures)
-- [15. GET `/processes/assignees/users`](#15-get-processesassigneesusers)
-- [16. GET `/processes/assignees/groups`](#16-get-processesassigneesgroups)
-- [17. GET `/activities`](#17-get-activities)
-- [18. GET `/activities/{activity_id}/procedures`](#18-get-activitiesactivity_idprocedures)
-- [19. GET `/documents/{document_id}`](#19-get-documentsdocument_id)
-- [20. GET `/thirds?nif=<nif>`](#20-get-thirdsnifnif)
-- [21. GET `/thirds/{third_id}`](#21-get-thirdsthird_id)
-- [22. GET `/queues/connectors/{connector_name}`](#22-get-queuesconnectorsconnector_name)
-- [23. GET `/queues/connectors/{connector_name}/{message_id}`](#23-get-queuesconnectorsconnector_namemessage_id)
-- [24. POST `/queues/connectors/{connector_name}/{message_id}`](#24-post-queuesconnectorsconnector_namemessage_id)
-- [25. POST `/addon/authorizations`](#25-post-addonauthorizations)
-- [26. GET `/addon/authorizations/{auth_id}`](#26-get-addonauthorizationsauth_id)
-- [27. GET `/processes/{process_id}/procedure-data`](#27-get-processesprocess_idprocedure-data)
-- [28. GET `/processes/{process_id}/procedure-data/{reference_id}`](#28-get-processesprocess_idprocedure-datareference_id)
+- [1. Create a process](#1-post-processes)
+- [2. Relate two processes](#2-post-processesrelated)
+- [3. List related processes](#3-get-processesprocess_idrelated)
+- [4. Remove a process relation](#4-delete-processesprocess_idrelatedrelated_process_id)
+- [5. Find a process by process number](#5-get-processesprocess_numbernumero)
+- [6. Add a document to a process by process number](#6-post-processesdocumentsprocess_numbernumero)
+- [7. Add a document to a process by process ID](#7-post-processesprocess_iddocuments)
+- [8. Add a document to a folder by process number](#8-post-processesdocumentsfolder_idprocess_numbernumero)
+- [9. Add a document to a folder by process ID](#9-post-processesprocess_iddocumentsfolder_id)
+- [10. Get process third-party IDs by process number](#10-get-processesthirdsprocess_numbernumero)
+- [11. Get process third-party IDs by process ID](#11-get-processesprocess_idthirds)
+- [12. List process documents and folders](#12-get-processesprocess_iddocumentschildren)
+- [13. Update document metadata](#13-update-document-metadata)
+- [14. Get document metadata](#14-document-metadata)
+- [15. List documents and folders inside a document or folder](#15-get-processesprocess_iddocumentsdocument_idchildren)
+- [16. Get document signatures](#16-get-processesprocess_iddocumentsdocument_idsignatures)
+- [17. Find an assignable user](#17-get-processesassigneesusers)
+- [18. List assignable groups](#18-get-processesassigneesgroups)
+- [19. List activities](#19-get-activities)
+- [20. List procedures for an activity](#20-get-activitiesactivity_idprocedures)
+- [21. Download a document](#21-get-documentsdocument_id)
+- [22. Find a third party by NIF](#22-get-thirdsnifnif)
+- [23. Get a third party by ID](#23-get-thirdsthird_id)
+- [24. List connector queue messages](#24-get-queuesconnectorsconnector_name)
+- [25. Get a connector queue message](#25-get-queuesconnectorsconnector_namemessage_id)
+- [26. Send a response to a connector queue message](#26-post-queuesconnectorsconnector_namemessage_id)
+- [27. Create an add-on authorization](#27-post-addonauthorizations)
+- [28. Check add-on authorization status](#28-get-addonauthorizationsauth_id)
+- [29. List process procedure-data definitions](#29-get-processesprocess_idprocedure-data)
+- [30. Get a process procedure-data value](#30-get-processesprocess_idprocedure-datareference_id)
+- [31. List document circuit templates](#31-get-processesprocess_iddocumentsdocument_idcircuittemplates)
+- [32. Create a document circuit from a template](#32-post-processesprocess_iddocumentsdocument_idcircuit)
 
 ## Models
 
@@ -1468,13 +1470,15 @@ Gets the documents and folders at the root of a Gestiona process file.
 - If `process_id` is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved variable such as `{{process_id}}`, the endpoint returns HTTP `400`.
 
-### Update document metadata
+### 13. Update document metadata
 
 `PUT /processes/{process_id}/documents/{document_id}` updates a document through
 `PUT /files/{process_id}/documents/{document_id}` using upstream content type
 `application/vnd.gestiona.file-document+json; version=4`.
 
-Both route parameters and all four body fields are required. The endpoint supports
+Both route parameters and the body fields `name`, `type`, `version`, and
+`metadata_language` are required. The fields `elaboration_state`, `metadata_type`,
+and `metadata_subtype` are optional and forwarded when provided. The endpoint supports
 the optional `operationId` query parameter and shared `X-User-Access-Token` header.
 
 ```json
@@ -1482,7 +1486,10 @@ the optional `operationId` query parameter and shared `X-User-Access-Token` head
   "name": "Updated document",
   "type": "DIGITAL",
   "version": "4",
-  "metadata_language": "PT"
+  "metadata_language": "PT",
+  "elaboration_state": "EE01",
+  "metadata_type": "TD99",
+  "metadata_subtype": "example"
 }
 ```
 
@@ -1502,13 +1509,15 @@ Success returns HTTP `200` with the updated upstream fields:
 }
 ```
 
+The shared document response also includes `elaboration_state`, `metadata_type`,
+and `metadata_subtype` when provided by Gestiona (null when absent).
 The returned version and language come from the upstream response. Errors use
 `ProcessDocumentsError`, with concatenated upstream `details`, then `description`,
 then the default gateway message. Invalid or missing input returns HTTP `400`;
 missing configuration returns `500`; other failures propagate the upstream error
 status or return `502`.
 
-### Document metadata
+### 14. Document metadata
 
 `GET /processes/{process_id}/documents/{document_id}` retrieves document metadata from
 `GET /files/{process_id}/documents/{document_id}`.
@@ -1517,7 +1526,7 @@ Both route parameters are required and must not contain unresolved variables.
 The optional `operationId` query parameter is echoed in the response. No request body is required.
 The endpoint supports the shared `X-User-Access-Token` header.
 
-Success returns HTTP `200` with only the following five fields in `result`:
+Success returns HTTP `200` with the following eight fields in `result`:
 
 ```json
 {
@@ -1528,7 +1537,10 @@ Success returns HTTP `200` with only the following five fields in `result`:
     "name": "Document",
     "type": "DIGITAL",
     "version": "2",
-    "metadata_language": "pt"
+    "metadata_language": "pt",
+    "elaboration_state": "EE01",
+    "metadata_type": "TD99",
+    "metadata_subtype": "example"
   }
 }
 ```
@@ -1539,7 +1551,7 @@ upstream `details`, then `description`, then the default gateway message.
 
 The previous listing behavior at this path has moved to the `/children` route below.
 
-### 13. GET `/processes/{process_id}/documents/{document_id}/children`
+### 15. GET `/processes/{process_id}/documents/{document_id}/children`
 
 Gets the documents and folders contained inside the specified Gestiona document or folder.
 
@@ -1595,7 +1607,7 @@ Gets the documents and folders contained inside the specified Gestiona document 
 - If either route parameter is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved `{{process_id}}` or `{{document_id}}` variable, the endpoint returns HTTP `400`.
 
-### 14. GET `/processes/{process_id}/documents/{document_id}/signatures`
+### 16. GET `/processes/{process_id}/documents/{document_id}/signatures`
 
 Gets signatures associated with a Gestiona process document and enriches each signature with signer user information.
 
@@ -1656,7 +1668,7 @@ Gets signatures associated with a Gestiona process document and enriches each si
 - If `process_id` or `document_id` is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved `{{process_id}}` or `{{document_id}}` variable, the endpoint returns HTTP `400`.
 
-### 15. GET `/processes/assignees/users`
+### 17. GET `/processes/assignees/users`
 
 Gets the first Gestiona assignee user matching the provided username.
 
@@ -1721,7 +1733,7 @@ Gets the first Gestiona assignee user matching the provided username.
 - The service returns the first item from the upstream `content` array.
 - If no assignee user is found, the endpoint returns HTTP `404`.
 
-### 16. GET `/processes/assignees/groups`
+### 18. GET `/processes/assignees/groups`
 
 Gets the Gestiona assignee groups available for process assignment.
 
@@ -1774,7 +1786,7 @@ Gets the Gestiona assignee groups available for process assignment.
 - Only `id` and `name` are exposed in each result item.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 17. GET `/activities`
+### 19. GET `/activities`
 
 Gets the activities available in the Gestiona catalog.
 
@@ -1826,7 +1838,7 @@ Gets the activities available in the Gestiona catalog.
 - The service returns the upstream `content` array.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 18. GET `/activities/{activity_id}/procedures`
+### 20. GET `/activities/{activity_id}/procedures`
 
 Gets the external procedures available for a Gestiona activity.
 
@@ -1879,7 +1891,7 @@ Gets the external procedures available for a Gestiona activity.
 - The gateway maps each upstream external procedure `title` to response field `name`.
 - If the upstream response contains no `content`, the endpoint returns an empty array.
 
-### 19. GET `/documents/{document_id}`
+### 21. GET `/documents/{document_id}`
 
 Downloads a document from Gestiona. This is an absolute route and is not prefixed by `/processes`.
 
@@ -1952,7 +1964,7 @@ The controller chooses the download filename in this order:
   - in the `X-Operation-Id` response header on success
 - When the upstream response includes document storage extension metadata, it is exposed in the `X-Storage-Extension` response header
 
-### 20. GET `/thirds?nif=<nif>`
+### 22. GET `/thirds?nif=<nif>`
 
 Gets a third from Gestiona by resolving the third id from a NIF, then enriches it with the default address.
 
@@ -2028,7 +2040,7 @@ Gets a third from Gestiona by resolving the third id from a NIF, then enriches i
 - If `nif` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{nif}}`, the endpoint returns HTTP `400`
 
-### 21. GET `/thirds/{third_id}`
+### 23. GET `/thirds/{third_id}`
 
 Gets a third from Gestiona and enriches it with the default address.
 
@@ -2100,7 +2112,7 @@ Gets a third from Gestiona and enriches it with the default address.
 - If `third_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{third_id}}`, the endpoint returns HTTP `400`
 
-### 22. GET `/queues/connectors/{connector_name}`
+### 24. GET `/queues/connectors/{connector_name}`
 
 Gets queued messages from a Gestiona connector queue.
 
@@ -2186,7 +2198,7 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - Each upstream queue message `payload.target` is returned as `message_id`.
 - Each upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
 
-### 23. GET `/queues/connectors/{connector_name}/{message_id}`
+### 25. GET `/queues/connectors/{connector_name}/{message_id}`
 
 Gets a message from a Gestiona connector queue.
 
@@ -2270,7 +2282,7 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - The upstream queue message `payload.target` is returned as `message_id`.
 - The upstream queue message `entry` value is formatted with `DateTimeHelpers.FormatUnixTimestamp` and returned as `date_signed`.
 
-### 24. POST `/queues/connectors/{connector_name}/{message_id}`
+### 26. POST `/queues/connectors/{connector_name}/{message_id}`
 
 Sends a response for a Gestiona connector queue message.
 
@@ -2365,7 +2377,7 @@ This endpoint always uses the configured Gestiona access token from `Gestiona:Ac
 - If Postman sends an unresolved variable such as `{{connector_name}}` or `{{message_id}}`, the endpoint returns HTTP `400`.
 - The active subscription name must match `connectors#{connector_name}`.
 
-### 25. POST `/addon/authorizations`
+### 27. POST `/addon/authorizations`
 
 Creates a Gestiona add-on authorization request.
 
@@ -2404,7 +2416,7 @@ Creates a Gestiona add-on authorization request.
 - HTTP `500`, `502`, or propagated upstream status code
 - Missing configuration or an invalid/missing upstream `Location` header produces an error `GatewayResponse`.
 
-### 26. GET `/addon/authorizations/{auth_id}`
+### 28. GET `/addon/authorizations/{auth_id}`
 
 Gets the current state of a Gestiona add-on authorization.
 
@@ -2465,7 +2477,7 @@ Gets the current state of a Gestiona add-on authorization.
 - HTTP `500`, `502`, or propagated upstream status code
 - A pending response without `Location`, or an authorized response without `user_id` or `access_token`, produces HTTP `502`.
 
-### 27. GET `/processes/{process_id}/procedure-data`
+### 29. GET `/processes/{process_id}/procedure-data`
 
 Gets all procedure-data definitions associated with a Gestiona process.
 
@@ -2520,7 +2532,7 @@ Gets all procedure-data definitions associated with a Gestiona process.
 - If `process_id` is empty or contains the unresolved value `{{process_id}}`, the endpoint returns HTTP `400`.
 - If the upstream response contains no procedure-data definitions, `result` is an empty array.
 
-### 28. GET `/processes/{process_id}/procedure-data/{reference_id}`
+### 30. GET `/processes/{process_id}/procedure-data/{reference_id}`
 
 Gets one procedure-data definition and its value from a Gestiona process.
 
@@ -2622,3 +2634,123 @@ Gets one procedure-data definition and its value from a Gestiona process.
 - If Gestiona omits `value` or returns an empty value, the gateway returns `"value": ""`.
 - For type `DATE`, Unix timestamps are formatted as `yyyy-MM-dd`. A `date` property inside an object value is formatted in the same way.
 - If either route parameter is empty, or contains the unresolved values `{{process_id}}` or `{{reference_id}}`, the endpoint returns HTTP `400`.
+
+### 31. GET `/processes/{process_id}/documents/{document_id}/circuit/templates`
+
+Lists the names of circuit templates available for a document, optionally filtered by name.
+
+#### Route parameters
+
+- `process_id` required
+- `document_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body
+
+Optional JSON body, sent with `Content-Type: application/json`:
+
+```json
+{
+  "name": "Despesas - SIGMA"
+}
+```
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/documents/{document_id}/circuit/templates`
+
+When a body is supplied, it is forwarded with
+`Content-Type: application/vnd.gestiona.filter.circuit-templates+json`.
+The gateway follows top-level links where `rel` is `next` and aggregates all pages.
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: an array of objects containing only `name`
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": [{ "name": "Despesas - SIGMA" }, { "name": "Selo" }]
+}
+```
+
+If no templates are returned, `result` is an empty array.
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, `502`, or propagated upstream error status
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessDocumentsError`
+
+Both route parameters must be nonblank and resolved. The endpoint supports the
+shared `X-User-Access-Token` header. Upstream errors use nonblank `details` entries
+joined with `; ` as `result.message`, falling back to `description` and then the
+default gateway message.
+
+### 32. POST `/processes/{process_id}/documents/{document_id}/circuit`
+
+Creates a document circuit using the first template returned for the supplied name.
+
+#### Route parameters
+
+- `process_id` required
+- `document_id` required
+
+#### Query parameters
+
+- `operationId` optional
+
+#### Request body
+
+Required JSON body with a nonblank `name`, sent with `Content-Type: application/json`:
+
+```json
+{
+  "name": "Despesas - SIGMA"
+}
+```
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/documents/{document_id}/circuit/templates` with the received name filter.
+2. `POST /files/{process_id}/documents/{document_id}/circuit` with the first complete template object.
+
+The lookup uses `Content-Type: application/vnd.gestiona.filter.circuit-templates+json`
+and follows pagination. Circuit creation uses
+`Content-Type: application/vnd.gestiona.circuits.template-filedoc+json; version=6`.
+The full template, including signers, connectors, version, and links when present,
+is forwarded to the upstream POST. The upstream creation must return HTTP `201`.
+
+#### Success response
+
+- HTTP `201 Created`
+- Body model: `GatewayResponse`
+- `result` shape: an empty object
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {}
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, `502`, or propagated upstream error status
+- Body model: `GatewayResponse`
+- `result` shape: `ProcessDocumentsError`
+
+A missing or invalid body, blank name, or missing/unresolved route parameter
+returns HTTP `400`. No matching template returns HTTP `404`, without creating a
+circuit. The endpoint supports the shared `X-User-Access-Token` header.
+
+Failures from either upstream call use nonblank `details` entries joined with
+`; ` as `result.message`, falling back to `description` and then the default
+gateway message.

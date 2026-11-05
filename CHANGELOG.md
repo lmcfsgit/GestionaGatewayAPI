@@ -2,6 +2,16 @@
 
 All notable changes to Gestiona Gateway API are documented in this file.
 
+## [2.0.1]
+
+### Changed
+
+- Document metadata returned by `GET` and `PUT /processes/{process_id}/documents/{document_id}`
+  now includes `elaboration_state`, `metadata_type`, and `metadata_subtype` from Gestiona.
+- `PUT /processes/{process_id}/documents/{document_id}` now accepts these three
+  fields in the request body. They are optional and forwarded upstream when supplied;
+  null values are omitted to preserve compatibility with existing requests.
+
 ## [2.0.0]
 
 ### Added

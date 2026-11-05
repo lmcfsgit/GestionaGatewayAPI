@@ -279,7 +279,7 @@ Lists documents and folders under a specific Gestiona folder or document contain
 
 #### Response data used
 
-- `id`, `name`, `type`, `version`, `metadata_language`
+- `id`, `name`, `type`, `version`, `metadata_language`, `elaboration_state`, `metadata_type`, `metadata_subtype`
 - On errors, nonblank `details` entries are joined with `; `; `description` is the fallback.
 
 ### 8. GET `/content/small/documentinstances/{document_id}`

@@ -9,8 +9,10 @@ namespace GestionaGatewayAPI.Tests;
 
 public sealed class GestionaApiClientTests
 {
-    [Fact]
-    public async Task UpdateProcessDocumentAsync_ForwardsBodyAndReturnsUpdatedMetadata()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task UpdateProcessDocumentAsync_ForwardsBodyAndReturnsUpdatedMetadata(bool includeMetadata)
     {
         var handler = new StubHttpMessageHandler(request =>
         {
@@ -19,7 +21,13 @@ public sealed class GestionaApiClientTests
             Assert.Equal("application/vnd.gestiona.file-document+json; version=4", request.Content!.Headers.ContentType!.ToString());
             Assert.Equal("token", request.Headers.GetValues("X-Gestiona-Access-Token").Single());
             using var body = System.Text.Json.JsonDocument.Parse(request.Content.ReadAsStringAsync().GetAwaiter().GetResult());
-            Assert.Equal(4, body.RootElement.EnumerateObject().Count());
+            Assert.Equal(includeMetadata ? 7 : 4, body.RootElement.EnumerateObject().Count());
+            if (includeMetadata)
+            {
+                Assert.Equal("EE01", body.RootElement.GetProperty("elaboration_state").GetString());
+                Assert.Equal("TD99", body.RootElement.GetProperty("metadata_type").GetString());
+                Assert.Equal("example", body.RootElement.GetProperty("metadata_subtype").GetString());
+            }
             Assert.Equal("Updated", body.RootElement.GetProperty("name").GetString());
             Assert.Equal("DIGITAL", body.RootElement.GetProperty("type").GetString());
             Assert.Equal("4", body.RootElement.GetProperty("version").GetString());
@@ -33,12 +41,14 @@ public sealed class GestionaApiClientTests
         });
         var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
         var result = await client.UpdateProcessDocumentAsync("https://gestiona.example/rest", "token",
-            "file/123", "doc/123", new UpdateProcessDocumentRequest("Updated", "DIGITAL", "4", "PT"), CancellationToken.None);
+            "file/123", "doc/123", new UpdateProcessDocumentRequest("Updated", "DIGITAL", "4", "PT",
+                includeMetadata ? "EE01" : null, includeMetadata ? "TD99" : null,
+                includeMetadata ? "example" : null), CancellationToken.None);
         Assert.True(result.Success);
         Assert.Equal("6", result.Value!.Version);
         Assert.Equal("pt", result.Value.MetadataLanguage);
         using var output = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(result.Value));
-        Assert.Equal(5, output.RootElement.EnumerateObject().Count());
+        Assert.Equal(8, output.RootElement.EnumerateObject().Count());
     }
 
     [Fact]
@@ -67,7 +77,7 @@ public sealed class GestionaApiClientTests
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(
-                    """{"id":"doc-123","name":"Test","type":"DIGITAL","version":"2","metadata_language":"pt","size":"1879","links":[]}""",
+                    """{"id":"doc-123","name":"Test","type":"DIGITAL","version":"2","metadata_language":"pt","elaboration_state":"EE01","metadata_type":"TD99","metadata_subtype":"example","size":"1879","links":[]}""",
                     Encoding.UTF8, "application/json")
             };
         });
@@ -77,7 +87,10 @@ public sealed class GestionaApiClientTests
         Assert.True(result.Success);
         Assert.Equal("pt", result.Value!.MetadataLanguage);
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(result.Value));
-        Assert.Equal(5, json.RootElement.EnumerateObject().Count());
+        Assert.Equal(8, json.RootElement.EnumerateObject().Count());
+        Assert.Equal("EE01", result.Value.ElaborationState);
+        Assert.Equal("TD99", result.Value.MetadataType);
+        Assert.Equal("example", result.Value.MetadataSubtype);
         Assert.False(json.RootElement.TryGetProperty("links", out _));
     }
 

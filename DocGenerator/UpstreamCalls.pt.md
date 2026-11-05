@@ -322,7 +322,7 @@ Lista os documentos e pastas dentro de uma pasta ou contentor de documento espec
 
 #### Dados da resposta utilizados
 
-- `id`, `name`, `type`, `version`, `metadata_language`
+- `id`, `name`, `type`, `version`, `metadata_language`, `elaboration_state`, `metadata_type`, `metadata_subtype`
 - Em caso de erro, as mensagens não vazias de `details` são concatenadas com `; `;
   na sua ausência, utiliza-se `description`.
 
