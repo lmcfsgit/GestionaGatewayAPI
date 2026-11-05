@@ -15,6 +15,146 @@ namespace GestionaGatewayAPI.Controllers;
 [Route("processes")]
 public sealed class ProcessesController : ControllerBase
 {
+    [HttpPut("{process_id}/documents/{document_id}")]
+    public async Task<ActionResult<GatewayResponse>> UpdateDocument(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "document_id")] string documentId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        var (request, exception) = await DeserializeRequestBody<UpdateProcessDocumentRequest>(
+            nameof(UpdateDocument), operationId, cancellationToken);
+        if (exception is not null || string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(documentId) ||
+            processId == "{{process_id}}" || documentId == "{{document_id}}")
+        {
+            return CreateProcessDocumentsErrorResponse(operationId, 400,
+                GetProcessDocumentsFailureKind.Validation,
+                exception is not null ? GetInvalidJsonMessage(exception)
+                    : "process_id and document_id must be provided and resolved.");
+        }
+
+        var result = await _gestionaProcessService.UpdateProcessDocumentAsync(
+            processId, documentId, request, GestionaRequestHeaders.GetAccessToken(Request), cancellationToken);
+        if (!result.Success)
+        {
+            var status = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Validation => 400,
+                GetProcessDocumentsFailureKind.Configuration => 500,
+                GetProcessDocumentsFailureKind.NotFound => 404,
+                _ => result.UpstreamStatusCode ?? 502
+            };
+            return CreateProcessDocumentsErrorResponse(operationId, status,
+                result.FailureKind, result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.Document!));
+    }
+
+    [HttpGet("{process_id}/documents/{document_id}")]
+    public async Task<ActionResult<GatewayResponse>> GetDocumentMetadata(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "document_id")] string documentId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(documentId) ||
+            processId == "{{process_id}}" || documentId == "{{document_id}}")
+        {
+            return CreateProcessDocumentsErrorResponse(operationId, 400,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id and document_id must be provided and resolved.");
+        }
+
+        var result = await _gestionaProcessService.GetProcessDocumentMetadataAsync(
+            processId, documentId, GestionaRequestHeaders.GetAccessToken(Request), cancellationToken);
+        if (!result.Success)
+        {
+            var status = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Validation => 400,
+                GetProcessDocumentsFailureKind.Configuration => 500,
+                GetProcessDocumentsFailureKind.NotFound => 404,
+                _ => result.UpstreamStatusCode ?? 502
+            };
+            return CreateProcessDocumentsErrorResponse(operationId, status,
+                result.FailureKind, result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.Document!));
+    }
+
+    [HttpPost("{process_id}/documents/{document_id}/circuit")]
+    public async Task<ActionResult<GatewayResponse>> CreateCircuit(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "document_id")] string documentId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        var (filter, exception) = await DeserializeRequestBody<CircuitTemplateFilter>(
+            nameof(CreateCircuit), operationId, cancellationToken);
+        if (exception is not null || string.IsNullOrWhiteSpace(filter?.Name) ||
+            string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(documentId) ||
+            processId == "{{process_id}}" || documentId == "{{document_id}}")
+        {
+            return CreateProcessDocumentsErrorResponse(operationId, 400,
+                GetProcessDocumentsFailureKind.Validation,
+                exception is not null ? GetInvalidJsonMessage(exception)
+                    : "Resolved process_id, document_id and a body with name are required.");
+        }
+
+        var result = await _gestionaProcessService.CreateCircuitAsync(
+            processId, documentId, filter, GestionaRequestHeaders.GetAccessToken(Request), cancellationToken);
+        if (!result.Success)
+        {
+            var status = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Validation => 400,
+                GetProcessDocumentsFailureKind.Configuration => 500,
+                GetProcessDocumentsFailureKind.NotFound => 404,
+                _ => result.UpstreamStatusCode ?? 502
+            };
+            return CreateProcessDocumentsErrorResponse(operationId, status,
+                result.FailureKind, result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return StatusCode(201, new GatewayResponse(operationId, true, new { }));
+    }
+
+    [HttpGet("{process_id}/documents/{document_id}/circuit/templates")]
+    public async Task<ActionResult<GatewayResponse>> GetCircuitTemplates(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "document_id")] string documentId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] CircuitTemplateFilter? filter,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(documentId) ||
+            processId == "{{process_id}}" || documentId == "{{document_id}}")
+        {
+            return CreateProcessDocumentsErrorResponse(operationId, 400,
+                GetProcessDocumentsFailureKind.Validation,
+                "process_id and document_id must be provided and resolved.");
+        }
+
+        var result = await _gestionaProcessService.GetCircuitTemplatesAsync(
+            processId, documentId, filter, GestionaRequestHeaders.GetAccessToken(Request), cancellationToken);
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetProcessDocumentsFailureKind.Configuration => 500,
+                GetProcessDocumentsFailureKind.Validation => 400,
+                GetProcessDocumentsFailureKind.NotFound => 404,
+                _ => result.UpstreamStatusCode ?? 502
+            };
+            return CreateProcessDocumentsErrorResponse(operationId, statusCode,
+                result.FailureKind, result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.Templates ?? []));
+    }
+
     private static readonly JsonSerializerOptions LogJsonOptions = new()
     {
         WriteIndented = true,
@@ -663,7 +803,7 @@ public sealed class ProcessesController : ControllerBase
     /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>A response envelope containing the process documents and folders, or an error payload.</returns>
-    [HttpGet("{process_id}/documents")]
+    [HttpGet("{process_id}/documents/children")]
     public async Task<ActionResult<GatewayResponse>> GetDocuments(
         [FromRoute(Name = "process_id")] string processId,
         [FromQuery(Name = "operationId")] string? operationId,
@@ -811,7 +951,7 @@ public sealed class ProcessesController : ControllerBase
     /// <param name="operationId">An optional operation identifier echoed back in the response envelope.</param>
     /// <param name="cancellationToken">The token used to cancel the asynchronous operation.</param>
     /// <returns>A response envelope containing the nested documents and folders, or an error payload.</returns>
-    [HttpGet("{process_id}/documents/{document_id}")]
+    [HttpGet("{process_id}/documents/{document_id}/children")]
     public async Task<ActionResult<GatewayResponse>> GetDocumentsInDocument(
         [FromRoute(Name = "process_id")] string processId,
         [FromRoute(Name = "document_id")] string documentId,

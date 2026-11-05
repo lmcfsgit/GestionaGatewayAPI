@@ -53,8 +53,10 @@
 - [9. POST `/processes/{process_id}/documents/{folder_id}`](#9-post-processesprocess_iddocumentsfolder_id)
 - [10. GET `/processes/thirds?process_number=<numero>`](#10-get-processesthirdsprocess_numbernumero)
 - [11. GET `/processes/{process_id}/thirds`](#11-get-processesprocess_idthirds)
-- [12. GET `/processes/{process_id}/documents`](#12-get-processesprocess_iddocuments)
-- [13. GET `/processes/{process_id}/documents/{document_id}`](#13-get-processesprocess_iddocumentsdocument_id)
+- [12. GET `/processes/{process_id}/documents/children`](#12-get-processesprocess_iddocumentschildren)
+- [13. GET `/processes/{process_id}/documents/{document_id}/children`](#13-get-processesprocess_iddocumentsdocument_idchildren)
+- [Document metadata](#document-metadata)
+- [Update document metadata](#update-document-metadata)
 - [14. GET `/processes/{process_id}/documents/{document_id}/signatures`](#14-get-processesprocess_iddocumentsdocument_idsignatures)
 - [15. GET `/processes/assignees/users`](#15-get-processesassigneesusers)
 - [16. GET `/processes/assignees/groups`](#16-get-processesassigneesgroups)
@@ -1405,7 +1407,7 @@ Gets the third identifiers associated with a Gestiona process file.
 - If `process_id` is empty or whitespace, the endpoint returns HTTP `400`
 - If Postman sends an unresolved variable such as `{{process_id}}`, the endpoint returns HTTP `400`
 
-### 12. GET `/processes/{process_id}/documents`
+### 12. GET `/processes/{process_id}/documents/children`
 
 Gets the documents and folders at the root of a Gestiona process file.
 
@@ -1466,7 +1468,78 @@ Gets the documents and folders at the root of a Gestiona process file.
 - If `process_id` is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved variable such as `{{process_id}}`, the endpoint returns HTTP `400`.
 
-### 13. GET `/processes/{process_id}/documents/{document_id}`
+### Update document metadata
+
+`PUT /processes/{process_id}/documents/{document_id}` updates a document through
+`PUT /files/{process_id}/documents/{document_id}` using upstream content type
+`application/vnd.gestiona.file-document+json; version=4`.
+
+Both route parameters and all four body fields are required. The endpoint supports
+the optional `operationId` query parameter and shared `X-User-Access-Token` header.
+
+```json
+{
+  "name": "Updated document",
+  "type": "DIGITAL",
+  "version": "4",
+  "metadata_language": "PT"
+}
+```
+
+Success returns HTTP `200` with the updated upstream fields:
+
+```json
+{
+  "operationId": null,
+  "success": true,
+  "result": {
+    "id": "4a9adaf5-9d38-4e75-b7e4-32ee3ba6bc3a",
+    "name": "Updated document",
+    "type": "DIGITAL",
+    "version": "6",
+    "metadata_language": "pt"
+  }
+}
+```
+
+The returned version and language come from the upstream response. Errors use
+`ProcessDocumentsError`, with concatenated upstream `details`, then `description`,
+then the default gateway message. Invalid or missing input returns HTTP `400`;
+missing configuration returns `500`; other failures propagate the upstream error
+status or return `502`.
+
+### Document metadata
+
+`GET /processes/{process_id}/documents/{document_id}` retrieves document metadata from
+`GET /files/{process_id}/documents/{document_id}`.
+
+Both route parameters are required and must not contain unresolved variables.
+The optional `operationId` query parameter is echoed in the response. No request body is required.
+The endpoint supports the shared `X-User-Access-Token` header.
+
+Success returns HTTP `200` with only the following five fields in `result`:
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "id": "4a9adaf5-9d38-4e75-b7e4-32ee3ba6bc3a",
+    "name": "Document",
+    "type": "DIGITAL",
+    "version": "2",
+    "metadata_language": "pt"
+  }
+}
+```
+
+Errors return `GatewayResponse` with `ProcessDocumentsError`: HTTP `400`, `404`,
+`500`, `502`, or the upstream error status. The error message uses concatenated
+upstream `details`, then `description`, then the default gateway message.
+
+The previous listing behavior at this path has moved to the `/children` route below.
+
+### 13. GET `/processes/{process_id}/documents/{document_id}/children`
 
 Gets the documents and folders contained inside the specified Gestiona document or folder.
 
@@ -1517,7 +1590,7 @@ Gets the documents and folders contained inside the specified Gestiona document 
 
 #### Notes
 
-- The response mapping is identical to `GET /processes/{process_id}/documents`.
+- The response mapping is identical to `GET /processes/{process_id}/documents/children`.
 - Both `DOC` and `FOLDER` entries from the upstream `content` array are returned.
 - If either route parameter is empty or whitespace, the endpoint returns HTTP `400`.
 - If Postman sends an unresolved `{{process_id}}` or `{{document_id}}` variable, the endpoint returns HTTP `400`.

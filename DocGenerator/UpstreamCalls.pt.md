@@ -282,7 +282,7 @@ Lista os documentos e pastas diretamente associados a um processo Gestiona.
 
 #### Utilizado por
 
-- `GET /processes/{process_id}/documents`
+- `GET /processes/{process_id}/documents/children`
 
 #### Cabeçalhos do pedido
 
@@ -300,7 +300,7 @@ Lista os documentos e pastas dentro de uma pasta ou contentor de documento espec
 
 #### Utilizado por
 
-- `GET /processes/{process_id}/documents/{document_id}`
+- `GET /processes/{process_id}/documents/{document_id}/children`
 
 #### Cabeçalhos do pedido
 
@@ -309,6 +309,22 @@ Lista os documentos e pastas dentro de uma pasta ou contentor de documento espec
 #### Dados da resposta utilizados
 
 - Os mesmos dados da listagem de documentos descritos na chamada 6.
+
+### Metadados do documento: GET `/files/{file_id}/documents/{document_id}`
+
+#### Utilizado por
+
+- `GET /processes/{process_id}/documents/{document_id}`
+
+#### Cabeçalhos do pedido
+
+- `X-Gestiona-Access-Token` obrigatório
+
+#### Dados da resposta utilizados
+
+- `id`, `name`, `type`, `version`, `metadata_language`
+- Em caso de erro, as mensagens não vazias de `details` são concatenadas com `; `;
+  na sua ausência, utiliza-se `description`.
 
 ### 8. GET `/content/small/documentinstances/{document_id}`
 

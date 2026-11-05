@@ -9,6 +9,179 @@ namespace GestionaGatewayAPI.Tests;
 
 public sealed class GestionaApiClientTests
 {
+    [Fact]
+    public async Task UpdateProcessDocumentAsync_ForwardsBodyAndReturnsUpdatedMetadata()
+    {
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            Assert.Equal(HttpMethod.Put, request.Method);
+            Assert.Equal("https://gestiona.example/rest/files/file%2F123/documents/doc%2F123", request.RequestUri!.AbsoluteUri);
+            Assert.Equal("application/vnd.gestiona.file-document+json; version=4", request.Content!.Headers.ContentType!.ToString());
+            Assert.Equal("token", request.Headers.GetValues("X-Gestiona-Access-Token").Single());
+            using var body = System.Text.Json.JsonDocument.Parse(request.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+            Assert.Equal(4, body.RootElement.EnumerateObject().Count());
+            Assert.Equal("Updated", body.RootElement.GetProperty("name").GetString());
+            Assert.Equal("DIGITAL", body.RootElement.GetProperty("type").GetString());
+            Assert.Equal("4", body.RootElement.GetProperty("version").GetString());
+            Assert.Equal("PT", body.RootElement.GetProperty("metadata_language").GetString());
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"id":"doc-123","name":"Updated","type":"DIGITAL","version":"6","metadata_language":"pt","links":[],"size":"1879"}""",
+                    Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+        var result = await client.UpdateProcessDocumentAsync("https://gestiona.example/rest", "token",
+            "file/123", "doc/123", new UpdateProcessDocumentRequest("Updated", "DIGITAL", "4", "PT"), CancellationToken.None);
+        Assert.True(result.Success);
+        Assert.Equal("6", result.Value!.Version);
+        Assert.Equal("pt", result.Value.MetadataLanguage);
+        using var output = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(result.Value));
+        Assert.Equal(5, output.RootElement.EnumerateObject().Count());
+    }
+
+    [Fact]
+    public async Task UpdateProcessDocumentAsync_WhenUpstreamFails_ReturnsDetails()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.Conflict)
+        {
+            Content = new StringContent("""{"details":["Version conflict","Reload document"],"description":"Fallback"}""",
+                Encoding.UTF8, "application/json")
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+        var result = await client.UpdateProcessDocumentAsync("https://gestiona.example/rest", "token",
+            "file-123", "doc-123", new UpdateProcessDocumentRequest("Updated", "DIGITAL", "4", "PT"), CancellationToken.None);
+        Assert.False(result.Success);
+        Assert.Equal(409, result.StatusCode);
+        Assert.Equal("Version conflict; Reload document", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetProcessDocumentMetadataAsync_ReturnsOnlyRequestedFields()
+    {
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            Assert.Equal(HttpMethod.Get, request.Method);
+            Assert.Equal("https://gestiona.example/rest/files/file%2F123/documents/doc%2F123", request.RequestUri!.AbsoluteUri);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"id":"doc-123","name":"Test","type":"DIGITAL","version":"2","metadata_language":"pt","size":"1879","links":[]}""",
+                    Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+        var result = await client.GetProcessDocumentMetadataAsync(
+            "https://gestiona.example/rest", "token", "file/123", "doc/123", CancellationToken.None);
+        Assert.True(result.Success);
+        Assert.Equal("pt", result.Value!.MetadataLanguage);
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(result.Value));
+        Assert.Equal(5, json.RootElement.EnumerateObject().Count());
+        Assert.False(json.RootElement.TryGetProperty("links", out _));
+    }
+
+    [Theory]
+    [InlineData("{\"details\":[\"First error\",\"\",\"Second error\"],\"description\":\"Fallback\"}", "First error; Second error")]
+    [InlineData("{\"details\":[],\"description\":\"Fallback\"}", "Fallback")]
+    [InlineData("{\"description\":\"Fallback\"}", "Fallback")]
+    [InlineData("{\"details\":[null,\" \"],\"description\":\"Fallback\"}", "Fallback")]
+    public async Task CreateCircuitAsync_WhenUpstreamFails_PrefersDetailsOverDescription(string body, string expected)
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json")
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.CreateCircuitAsync("https://gestiona.example/rest", "token",
+            "file-123", "doc-123", new CircuitTemplate("SIGMA"), CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(expected, result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task CreateCircuitAsync_PostsCompleteTemplateAndAcceptsCreated()
+    {
+        var template = System.Text.Json.JsonSerializer.Deserialize<CircuitTemplate>(
+            """{"name":"SIGMA","block_edit":true,"signers":[{"rel":"signer-stamp"}],"version":"0"}""")!;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal("https://gestiona.example/rest/files/file-123/documents/doc-123/circuit", request.RequestUri!.AbsoluteUri);
+            Assert.Equal("application/vnd.gestiona.circuits.template-filedoc+json; version=6",
+                request.Content!.Headers.ContentType!.ToString());
+            var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            using var json = System.Text.Json.JsonDocument.Parse(body);
+            Assert.True(json.RootElement.GetProperty("block_edit").GetBoolean());
+            Assert.Equal("signer-stamp", json.RootElement.GetProperty("signers")[0].GetProperty("rel").GetString());
+            return new HttpResponseMessage(HttpStatusCode.Created);
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+        var result = await client.CreateCircuitAsync("https://gestiona.example/rest", "token",
+            "file-123", "doc-123", template, CancellationToken.None);
+        Assert.True(result.Success);
+        Assert.Equal(201, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCircuitTemplatesAsync_WhenUpstreamFails_PreservesDescription()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("""{"description":"The document has no circuit templates."}""",
+                Encoding.UTF8, "application/json")
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+
+        var result = await client.GetCircuitTemplatesAsync(
+            "https://gestiona.example/rest", "token", "file-123", "doc-123", null, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("The document has no circuit templates.", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetCircuitTemplatesAsync_ForwardsOptionalFilterAndReturnsNames(bool hasFilter)
+    {
+        var calls = 0;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            calls++;
+            Assert.Equal(HttpMethod.Get, request.Method);
+            if (hasFilter)
+            {
+                Assert.Equal("application/vnd.gestiona.filter.circuit-templates+json",
+                    request.Content!.Headers.ContentType!.MediaType);
+                Assert.Equal("{\"name\":\"Selo\"}", request.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+            }
+            else
+            {
+                Assert.Null(request.Content);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(calls == 1
+                    ? """{"content":[{"name":"Selo","block_edit":true}],"links":[{"rel":"next","href":"https://gestiona.example/rest/files/file-123/documents/doc-123/circuit/templates?page=2"}]}"""
+                    : """{"content":[{"name":"Other"}],"links":[]}""",
+                    Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+        var result = await client.GetCircuitTemplatesAsync(
+            "https://gestiona.example/rest", "token", "file-123", "doc-123",
+            hasFilter ? new CircuitTemplateFilter("Selo") : null, CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, calls);
+        Assert.Equal(new[] { "Selo", "Other" }, result.Value!.Select(item => item.Name));
+    }
+
     [Theory]
     [InlineData(false, null)]
     [InlineData(false, "custom-subtype")]

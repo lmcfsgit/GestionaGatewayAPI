@@ -12,6 +12,153 @@ namespace GestionaGateway.Core.Services;
 /// </summary>
 public sealed class GestionaProcessService : IGestionaProcessService
 {
+    public async Task<GetProcessDocumentMetadataResult> UpdateProcessDocumentAsync(
+        string processId, string documentId, UpdateProcessDocumentRequest? request,
+        string? accessTokenOverride, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(documentId) ||
+            request is null || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Type) ||
+            string.IsNullOrWhiteSpace(request.Version) || string.IsNullOrWhiteSpace(request.MetadataLanguage))
+        {
+            return new(false, GetProcessDocumentsFailureKind.Validation,
+                "processId, documentId, name, type, version and metadata_language are required.", null, null);
+        }
+
+        var baseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var token = GestionaAccessTokenResolver.Resolve(_gestionaOptions, accessTokenOverride, _logger);
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
+        {
+            return new(false, GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona API base URL or access token is not configured.", null, null);
+        }
+
+        var result = await _gestionaApiClient.UpdateProcessDocumentAsync(
+            baseUrl, token, processId, documentId, request, cancellationToken);
+        if (!result.Success || result.Value is null)
+        {
+            return new(false, result.StatusCode == 404
+                    ? GetProcessDocumentsFailureKind.NotFound : GetProcessDocumentsFailureKind.Upstream,
+                string.IsNullOrWhiteSpace(result.ErrorMessage)
+                    ? "Failed to update Gestiona document." : result.ErrorMessage,
+                null, GetUpstreamErrorStatusCode(result.StatusCode));
+        }
+
+        return new(true, GetProcessDocumentsFailureKind.None, null, result.Value, null);
+    }
+
+    public async Task<GetProcessDocumentMetadataResult> GetProcessDocumentMetadataAsync(
+        string processId, string documentId, string? accessTokenOverride, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(documentId))
+        {
+            return new(false, GetProcessDocumentsFailureKind.Validation,
+                "processId and documentId are required.", null, null);
+        }
+
+        var baseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var token = GestionaAccessTokenResolver.Resolve(_gestionaOptions, accessTokenOverride, _logger);
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
+        {
+            return new(false, GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona API base URL or access token is not configured.", null, null);
+        }
+
+        var result = await _gestionaApiClient.GetProcessDocumentMetadataAsync(
+            baseUrl, token, processId, documentId, cancellationToken);
+        if (!result.Success || result.Value is null)
+        {
+            return new(false, result.StatusCode == 404
+                    ? GetProcessDocumentsFailureKind.NotFound : GetProcessDocumentsFailureKind.Upstream,
+                string.IsNullOrWhiteSpace(result.ErrorMessage)
+                    ? "Failed to get Gestiona document metadata." : result.ErrorMessage,
+                null, GetUpstreamErrorStatusCode(result.StatusCode));
+        }
+
+        return new(true, GetProcessDocumentsFailureKind.None, null, result.Value, null);
+    }
+
+    public async Task<CreateCircuitResult> CreateCircuitAsync(
+        string processId, string documentId, CircuitTemplateFilter? filter,
+        string? accessTokenOverride, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(documentId) ||
+            string.IsNullOrWhiteSpace(filter?.Name))
+        {
+            return new(false, GetProcessDocumentsFailureKind.Validation,
+                "processId, documentId and name are required.", null);
+        }
+
+        var baseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var token = GestionaAccessTokenResolver.Resolve(_gestionaOptions, accessTokenOverride, _logger);
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
+        {
+            return new(false, GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona API base URL or access token is not configured.", null);
+        }
+
+        var templates = await _gestionaApiClient.GetCircuitTemplatesAsync(
+            baseUrl, token, processId, documentId, filter, cancellationToken);
+        if (!templates.Success)
+        {
+            return new(false, templates.StatusCode == 404
+                    ? GetProcessDocumentsFailureKind.NotFound : GetProcessDocumentsFailureKind.Upstream,
+                string.IsNullOrWhiteSpace(templates.ErrorMessage)
+                    ? "Failed to get Gestiona document circuit templates." : templates.ErrorMessage,
+                GetUpstreamErrorStatusCode(templates.StatusCode));
+        }
+
+        var template = templates.Value?.FirstOrDefault();
+        if (template is null)
+        {
+            return new(false, GetProcessDocumentsFailureKind.NotFound,
+                "No matching circuit template was found.", null);
+        }
+
+        var result = await _gestionaApiClient.CreateCircuitAsync(
+            baseUrl, token, processId, documentId, template, cancellationToken);
+        return result.Success
+            ? new(true, GetProcessDocumentsFailureKind.None, null, null)
+            : new(false, result.StatusCode == 404
+                    ? GetProcessDocumentsFailureKind.NotFound : GetProcessDocumentsFailureKind.Upstream,
+                string.IsNullOrWhiteSpace(result.ErrorMessage)
+                    ? "Failed to create Gestiona document circuit." : result.ErrorMessage,
+                GetUpstreamErrorStatusCode(result.StatusCode));
+    }
+
+    public async Task<GetCircuitTemplatesResult> GetCircuitTemplatesAsync(
+        string processId, string documentId, CircuitTemplateFilter? filter,
+        string? accessTokenOverride, CancellationToken cancellationToken)
+    {
+        var baseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var token = GestionaAccessTokenResolver.Resolve(_gestionaOptions, accessTokenOverride, _logger);
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
+        {
+            return new(false, GetProcessDocumentsFailureKind.Configuration,
+                "Gestiona API base URL or access token is not configured.", null, null);
+        }
+
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(documentId))
+        {
+            return new(false, GetProcessDocumentsFailureKind.Validation,
+                "processId and documentId are required.", null, null);
+        }
+
+        var result = await _gestionaApiClient.GetCircuitTemplatesAsync(
+            baseUrl, token, processId, documentId, filter, cancellationToken);
+        if (!result.Success)
+        {
+            return new(false, result.StatusCode == 404
+                    ? GetProcessDocumentsFailureKind.NotFound : GetProcessDocumentsFailureKind.Upstream,
+                string.IsNullOrWhiteSpace(result.ErrorMessage)
+                    ? "Failed to get Gestiona document circuit templates."
+                    : result.ErrorMessage, null,
+                GetUpstreamErrorStatusCode(result.StatusCode));
+        }
+
+        return new(true, GetProcessDocumentsFailureKind.None, null,
+            result.Value?.Select(template => new CircuitTemplate(template.Name)).ToArray() ?? [], null);
+    }
+
     private readonly GestionaOptions _gestionaOptions;
     private readonly IGestionaApiClient _gestionaApiClient;
     private readonly ILogger<GestionaProcessService> _logger;

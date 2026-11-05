@@ -5,6 +5,35 @@ namespace GestionaGatewayAPI.Tests.TestDoubles;
 
 internal sealed class TestGestionaApiClient : IGestionaApiClient
 {
+    public Func<string, string, string, string, UpdateProcessDocumentRequest, CancellationToken, Task<GestionaApiCallResult<ProcessDocumentMetadata?>>>? UpdateProcessDocumentAsyncHandler { get; init; }
+    public Task<GestionaApiCallResult<ProcessDocumentMetadata?>> UpdateProcessDocumentAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        UpdateProcessDocumentRequest request, CancellationToken cancellationToken) =>
+        Invoke<GestionaApiCallResult<ProcessDocumentMetadata?>>(UpdateProcessDocumentAsyncHandler,
+            gestionaApiBaseUrl, accessToken, processId, documentId, request, cancellationToken);
+
+    public Func<string, string, string, string, CancellationToken, Task<GestionaApiCallResult<ProcessDocumentMetadata?>>>? GetProcessDocumentMetadataAsyncHandler { get; init; }
+    public Task<GestionaApiCallResult<ProcessDocumentMetadata?>> GetProcessDocumentMetadataAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CancellationToken cancellationToken) =>
+        Invoke<GestionaApiCallResult<ProcessDocumentMetadata?>>(GetProcessDocumentMetadataAsyncHandler,
+            gestionaApiBaseUrl, accessToken, processId, documentId, cancellationToken);
+
+    public Func<string, string, string, string, CircuitTemplate, CancellationToken, Task<GestionaApiCallResult<string?>>>? CreateCircuitAsyncHandler { get; init; }
+    public Task<GestionaApiCallResult<string?>> CreateCircuitAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CircuitTemplate template, CancellationToken cancellationToken) =>
+        Invoke<GestionaApiCallResult<string?>>(CreateCircuitAsyncHandler,
+            gestionaApiBaseUrl, accessToken, processId, documentId, template, cancellationToken);
+
+    public Func<string, string, string, string, CircuitTemplateFilter?, CancellationToken, Task<GestionaApiCallResult<IReadOnlyList<CircuitTemplate>>>>? GetCircuitTemplatesAsyncHandler { get; init; }
+
+    public Task<GestionaApiCallResult<IReadOnlyList<CircuitTemplate>>> GetCircuitTemplatesAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CircuitTemplateFilter? filter, CancellationToken cancellationToken) =>
+        Invoke<GestionaApiCallResult<IReadOnlyList<CircuitTemplate>>>(GetCircuitTemplatesAsyncHandler,
+            gestionaApiBaseUrl, accessToken, processId, documentId, filter, cancellationToken);
+
     public Func<string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? CreateUploadSpaceAsyncHandler { get; init; }
     public Func<string, string, CancellationToken, Task<GestionaApiCallResult<string?>>>? CreateAddOnAuthorizationAsyncHandler { get; init; }
     public Func<string, string, string, CancellationToken, Task<GestionaApiCallResult<GestionaAddOnAuthorizationStatus?>>>? GetAddOnAuthorizationAsyncHandler { get; init; }

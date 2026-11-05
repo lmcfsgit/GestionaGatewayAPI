@@ -10,6 +10,104 @@ namespace GestionaGateway.Core.Services;
 
 public sealed partial class GestionaApiClient
 {
+    public async Task<GestionaApiCallResult<ProcessDocumentMetadata?>> UpdateProcessDocumentAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        UpdateProcessDocumentRequest request, CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/documents/{Uri.EscapeDataString(documentId)}";
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, route)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8)
+        };
+        httpRequest.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(FileDocumentContentType);
+        using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
+        LogDeprecatedHeader(response, nameof(UpdateProcessDocumentAsync));
+        var body = await ReadResponseBodyAsync(response, cancellationToken);
+        _logger.LogDebug("({Method}) response: StatusCode={StatusCode}, Body={Body}",
+            nameof(UpdateProcessDocumentAsync), response.StatusCode, body);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new GestionaApiCallResult<ProcessDocumentMetadata?>((int)response.StatusCode, false, null)
+            {
+                ErrorMessage = GetUpstreamErrorMessage(body)
+            };
+        }
+
+        var document = DeserializeResponse<ProcessDocumentMetadata>(body, nameof(UpdateProcessDocumentAsync));
+        return new((int)response.StatusCode, document is not null, document);
+    }
+
+    public async Task<GestionaApiCallResult<ProcessDocumentMetadata?>> GetProcessDocumentMetadataAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/documents/{Uri.EscapeDataString(documentId)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetProcessDocumentMetadataAsync));
+        var body = await ReadResponseBodyAsync(response, cancellationToken);
+        _logger.LogDebug("({Method}) response: StatusCode={StatusCode}, Body={Body}",
+            nameof(GetProcessDocumentMetadataAsync), response.StatusCode, body);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new GestionaApiCallResult<ProcessDocumentMetadata?>((int)response.StatusCode, false, null)
+            {
+                ErrorMessage = GetUpstreamErrorMessage(body)
+            };
+        }
+
+        var document = DeserializeResponse<ProcessDocumentMetadata>(body, nameof(GetProcessDocumentMetadataAsync));
+        return new((int)response.StatusCode, document is not null, document);
+    }
+
+    public async Task<GestionaApiCallResult<string?>> CreateCircuitAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CircuitTemplate template, CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/documents/{Uri.EscapeDataString(documentId)}/circuit";
+        using var request = new HttpRequestMessage(HttpMethod.Post, route)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(template), Encoding.UTF8)
+        };
+        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(
+            "application/vnd.gestiona.circuits.template-filedoc+json; version=6");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(CreateCircuitAsync));
+        var body = await ReadResponseBodyAsync(response, cancellationToken);
+        _logger.LogDebug("({Method}) response: StatusCode={StatusCode}, Body={Body}",
+            nameof(CreateCircuitAsync), response.StatusCode, body);
+        return new GestionaApiCallResult<string?>((int)response.StatusCode,
+            response.StatusCode == System.Net.HttpStatusCode.Created, null)
+        {
+            ErrorMessage = GetUpstreamErrorMessage(body)
+        };
+    }
+
+    public async Task<GestionaApiCallResult<IReadOnlyList<CircuitTemplate>>> GetCircuitTemplatesAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CircuitTemplateFilter? filter, CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/documents/{Uri.EscapeDataString(documentId)}/circuit/templates";
+        var body = filter is null ? null : JsonSerializer.Serialize(filter);
+        return await GetPagedContentAsync<CircuitTemplatesResponse, CircuitTemplate>(
+            httpClient, route, nameof(GetCircuitTemplatesAsync),
+            response => response.Content, response => response.Links, cancellationToken,
+            body is null ? null : () => new StringContent(
+                body, Encoding.UTF8, "application/vnd.gestiona.filter.circuit-templates+json"));
+    }
+
     /// <summary>
     /// Creates a temporary upload space in Gestiona and returns the location where document content must be uploaded.
     /// </summary>

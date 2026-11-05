@@ -7,6 +7,21 @@ namespace GestionaGateway.Core.Services;
 /// </summary>
 public interface IGestionaProcessService
 {
+    Task<GetProcessDocumentMetadataResult> UpdateProcessDocumentAsync(
+        string processId, string documentId, UpdateProcessDocumentRequest? request,
+        string? accessTokenOverride, CancellationToken cancellationToken);
+
+    Task<GetProcessDocumentMetadataResult> GetProcessDocumentMetadataAsync(
+        string processId, string documentId, string? accessTokenOverride, CancellationToken cancellationToken);
+
+    Task<CreateCircuitResult> CreateCircuitAsync(
+        string processId, string documentId, CircuitTemplateFilter? filter,
+        string? accessTokenOverride, CancellationToken cancellationToken);
+
+    Task<GetCircuitTemplatesResult> GetCircuitTemplatesAsync(
+        string processId, string documentId, CircuitTemplateFilter? filter,
+        string? accessTokenOverride, CancellationToken cancellationToken);
+
     /// <summary>
     /// Creates a document or folder in a Gestiona process file.
     /// </summary>

@@ -191,7 +191,8 @@ public sealed partial class GestionaApiClient : IGestionaApiClient
         string methodName,
         Func<TResponse, IReadOnlyList<TItem>?> getContent,
         Func<TResponse, IReadOnlyList<GestionaLink>?> getLinks,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<HttpContent>? createContent = null)
     {
         var items = new List<TItem>();
         var visitedUris = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -219,6 +220,7 @@ public sealed partial class GestionaApiClient : IGestionaApiClient
             }
 
             using var request = new HttpRequestMessage(HttpMethod.Get, currentUri);
+            request.Content = createContent?.Invoke();
             using var response = await httpClient.SendAsync(request, cancellationToken);
             statusCode = (int)response.StatusCode;
             LogDeprecatedHeader(response, methodName);
@@ -238,7 +240,10 @@ public sealed partial class GestionaApiClient : IGestionaApiClient
                     methodName,
                     response.StatusCode,
                     FormatJsonForLog(responseBody));
-                return new GestionaApiCallResult<IReadOnlyList<TItem>>(statusCode, false, []);
+                return new GestionaApiCallResult<IReadOnlyList<TItem>>(statusCode, false, [])
+                {
+                    ErrorMessage = GetUpstreamErrorMessage(responseBody)
+                };
             }
 
             var responseModel = DeserializeResponse<TResponse>(responseBody, methodName);
@@ -308,6 +313,41 @@ public sealed partial class GestionaApiClient : IGestionaApiClient
                responseBody is "<empty>" or "<no content>"
             ? null
             : responseBody;
+    }
+
+    private static string? GetUpstreamErrorMessage(string responseBody)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseBody);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            if (root.TryGetProperty("details", out var details) && details.ValueKind == JsonValueKind.Array)
+            {
+                var messages = details.EnumerateArray()
+                    .Where(item => item.ValueKind == JsonValueKind.String)
+                    .Select(item => item.GetString())
+                    .Where(message => !string.IsNullOrWhiteSpace(message))
+                    .ToArray();
+                if (messages.Length > 0)
+                {
+                    return string.Join("; ", messages);
+                }
+            }
+
+            return root.TryGetProperty("description", out var description) &&
+                description.ValueKind == JsonValueKind.String
+                ? description.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? GetResponseBodyDescription(string responseBody)

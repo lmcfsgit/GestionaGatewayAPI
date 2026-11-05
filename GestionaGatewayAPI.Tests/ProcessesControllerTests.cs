@@ -13,6 +13,20 @@ namespace GestionaGatewayAPI.Tests;
 public sealed class ProcessesControllerTests
 {
     [Fact]
+    public void DocumentRoutes_SeparateMetadataFromChildren()
+    {
+        var rootChildrenRoute = typeof(ProcessesController).GetMethod(nameof(ProcessesController.GetDocuments))!
+            .GetCustomAttributes(typeof(HttpGetAttribute), false).Cast<HttpGetAttribute>().Single();
+        Assert.Equal("{process_id}/documents/children", rootChildrenRoute.Template);
+        var metadataRoute = typeof(ProcessesController).GetMethod(nameof(ProcessesController.GetDocumentMetadata))!
+            .GetCustomAttributes(typeof(HttpGetAttribute), false).Cast<HttpGetAttribute>().Single();
+        var childrenRoute = typeof(ProcessesController).GetMethod(nameof(ProcessesController.GetDocumentsInDocument))!
+            .GetCustomAttributes(typeof(HttpGetAttribute), false).Cast<HttpGetAttribute>().Single();
+        Assert.Equal("{process_id}/documents/{document_id}", metadataRoute.Template);
+        Assert.Equal("{process_id}/documents/{document_id}/children", childrenRoute.Template);
+    }
+
+    [Fact]
     public async Task UploadToFile_WhenGestionaRejectsDocument_ReturnsDetailsInGatewayResult()
     {
         var controller = CreateController(new TestGestionaProcessService
@@ -389,6 +403,22 @@ public sealed class ProcessesControllerTests
 
     private sealed class TestGestionaProcessService : IGestionaProcessService
     {
+        public Task<GetProcessDocumentMetadataResult> UpdateProcessDocumentAsync(
+            string processId, string documentId, UpdateProcessDocumentRequest? request,
+            string? accessTokenOverride, CancellationToken cancellationToken) => throw new NotImplementedException();
+
+        public Task<GetProcessDocumentMetadataResult> GetProcessDocumentMetadataAsync(
+            string processId, string documentId, string? accessTokenOverride,
+            CancellationToken cancellationToken) => throw new NotImplementedException();
+
+        public Task<CreateCircuitResult> CreateCircuitAsync(
+            string processId, string documentId, CircuitTemplateFilter? filter,
+            string? accessTokenOverride, CancellationToken cancellationToken) => throw new NotImplementedException();
+
+        public Task<GetCircuitTemplatesResult> GetCircuitTemplatesAsync(
+            string processId, string documentId, CircuitTemplateFilter? filter,
+            string? accessTokenOverride, CancellationToken cancellationToken) => throw new NotImplementedException();
+
         public Func<string?, CancellationToken, Task<GetProcessAssigneeGroupsResult>>? GetProcessAssigneeGroupsAsyncHandler { get; init; }
         public Func<GetProcessAssigneeUserRequest, string?, CancellationToken, Task<GetProcessAssigneeUserResult>>? GetProcessAssigneeUserAsyncHandler { get; init; }
         public Func<RelatedProcessesRequest, string?, CancellationToken, Task<RelatedProcessesResult>>? RelateProcessesAsyncHandler { get; init; }

@@ -2,6 +2,31 @@
 
 All notable changes to Gestiona Gateway API are documented in this file.
 
+## [2.0.0]
+
+### Added
+
+- Added `GET /processes/{process_id}/documents/{document_id}/circuit/templates`
+  to list circuit template names, with an optional `name` filter in the request body.
+- Added `POST /processes/{process_id}/documents/{document_id}/circuit` to create
+  a document circuit from the first matching template using the required `name` body field.
+- Added `GET /processes/{process_id}/documents/{document_id}` to retrieve document
+  metadata: `id`, `name`, `type`, `version`, and `metadata_language`.
+- Added `PUT /processes/{process_id}/documents/{document_id}` to update document
+  `name`, `type`, `version`, and `metadata_language`, returning the updated metadata.
+
+### Changed
+
+- Breaking change: the process document listing moved from
+  `GET /processes/{process_id}/documents` to
+  `GET /processes/{process_id}/documents/children`.
+- Breaking change: the nested document/folder listing moved from
+  `GET /processes/{process_id}/documents/{document_id}` to
+  `GET /processes/{process_id}/documents/{document_id}/children`.
+  The original route now returns document metadata.
+- Circuit and document metadata errors return concatenated upstream `details`
+  messages, falling back to `description` and then the default gateway message.
+
 ## [1.9.5]
 
 ### Added

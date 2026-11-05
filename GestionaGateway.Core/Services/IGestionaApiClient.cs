@@ -7,6 +7,22 @@ namespace GestionaGateway.Core.Services;
 /// </summary>
 public interface IGestionaApiClient
 {
+    Task<GestionaApiCallResult<ProcessDocumentMetadata?>> UpdateProcessDocumentAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        UpdateProcessDocumentRequest request, CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<ProcessDocumentMetadata?>> GetProcessDocumentMetadataAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<string?>> CreateCircuitAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CircuitTemplate template, CancellationToken cancellationToken);
+
+    Task<GestionaApiCallResult<IReadOnlyList<CircuitTemplate>>> GetCircuitTemplatesAsync(
+        string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
+        CircuitTemplateFilter? filter, CancellationToken cancellationToken);
+
     /// <summary>
     /// Creates a temporary upload space in Gestiona.
     /// </summary>

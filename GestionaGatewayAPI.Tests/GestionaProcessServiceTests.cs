@@ -11,6 +11,99 @@ namespace GestionaGatewayAPI.Tests;
 
 public sealed class GestionaProcessServiceTests
 {
+    [Fact]
+    public async Task UpdateProcessDocumentAsync_UsesOverrideTokenAndUpstreamVersion()
+    {
+        var client = new TestGestionaApiClient
+        {
+            UpdateProcessDocumentAsyncHandler = (baseUrl, token, processId, documentId, request, cancellationToken) =>
+            {
+                Assert.Equal("override", token);
+                Assert.Equal("4", request.Version);
+                return Task.FromResult(new GestionaApiCallResult<ProcessDocumentMetadata?>(200, true,
+                    new ProcessDocumentMetadata(documentId, request.Name, request.Type, "6", "pt")));
+            }
+        };
+        var result = await CreateService(client).UpdateProcessDocumentAsync("file-123", "doc-123",
+            new UpdateProcessDocumentRequest("Updated", "DIGITAL", "4", "PT"), "override", CancellationToken.None);
+        Assert.True(result.Success);
+        Assert.Equal("6", result.Document!.Version);
+    }
+
+    [Fact]
+    public async Task UpdateProcessDocumentAsync_WhenBodyMissing_ReturnsValidationFailure()
+    {
+        var result = await CreateService(new TestGestionaApiClient()).UpdateProcessDocumentAsync(
+            "file-123", "doc-123", null, null, CancellationToken.None);
+        Assert.False(result.Success);
+        Assert.Equal(GetProcessDocumentsFailureKind.Validation, result.FailureKind);
+    }
+
+    [Fact]
+    public async Task CreateCircuitAsync_PostsFirstCompleteTemplate()
+    {
+        var first = System.Text.Json.JsonSerializer.Deserialize<CircuitTemplate>(
+            """{"name":"SIGMA","block_edit":true,"signers":[{"rel":"signer-stamp"}],"version":"0","links":[]}""")!;
+        var client = new TestGestionaApiClient
+        {
+            GetCircuitTemplatesAsyncHandler = (baseUrl, token, processId, documentId, filter, cancellationToken) =>
+            {
+                Assert.Equal("SIGMA", filter!.Name);
+                return Task.FromResult(new GestionaApiCallResult<IReadOnlyList<CircuitTemplate>>(
+                    200, true, [first, new CircuitTemplate("Second")]));
+            },
+            CreateCircuitAsyncHandler = (baseUrl, token, processId, documentId, template, cancellationToken) =>
+            {
+                Assert.Same(first, template);
+                Assert.True(template.Fields!["block_edit"].GetBoolean());
+                return Task.FromResult(new GestionaApiCallResult<string?>(201, true, null));
+            }
+        };
+
+        var result = await CreateService(client).CreateCircuitAsync(
+            "file-123", "doc-123", new CircuitTemplateFilter("SIGMA"), null, CancellationToken.None);
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task CreateCircuitAsync_WhenNoTemplateMatches_ReturnsNotFound()
+    {
+        var client = new TestGestionaApiClient
+        {
+            GetCircuitTemplatesAsyncHandler = (baseUrl, token, processId, documentId, filter, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<IReadOnlyList<CircuitTemplate>>(200, true, []))
+        };
+        var result = await CreateService(client).CreateCircuitAsync(
+            "file-123", "doc-123", new CircuitTemplateFilter("Missing"), null, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(GetProcessDocumentsFailureKind.NotFound, result.FailureKind);
+    }
+
+    [Theory]
+    [InlineData("The document is locked.", "The document is locked.")]
+    [InlineData(null, "Failed to get Gestiona document circuit templates.")]
+    public async Task GetCircuitTemplatesAsync_WhenUpstreamFails_UsesDescriptionOrFallback(
+        string? description, string expectedMessage)
+    {
+        var client = new TestGestionaApiClient
+        {
+            GetCircuitTemplatesAsyncHandler = (baseUrl, token, processId, documentId, filter, cancellationToken) =>
+                Task.FromResult(new GestionaApiCallResult<IReadOnlyList<CircuitTemplate>>(400, false, [])
+                {
+                    ErrorMessage = description
+                })
+        };
+
+        var result = await CreateService(client).GetCircuitTemplatesAsync(
+            "file-123", "doc-123", null, null, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(expectedMessage, result.ErrorMessage);
+        Assert.Equal(400, result.UpstreamStatusCode);
+    }
+
     [Theory]
     [InlineData("{}", "EE01", "TD99", null)]
     [InlineData("{\"elaboration_state\":null,\"metadata_type\":null}", "EE01", "TD99", null)]

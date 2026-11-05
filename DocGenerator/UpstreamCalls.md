@@ -239,7 +239,7 @@ Lists documents and folders directly under a Gestiona file.
 
 #### Used by
 
-- `GET /processes/{process_id}/documents`
+- `GET /processes/{process_id}/documents/children`
 
 #### Request headers
 
@@ -257,7 +257,7 @@ Lists documents and folders under a specific Gestiona folder or document contain
 
 #### Used by
 
-- `GET /processes/{process_id}/documents/{document_id}`
+- `GET /processes/{process_id}/documents/{document_id}/children`
 
 #### Request headers
 
@@ -266,6 +266,21 @@ Lists documents and folders under a specific Gestiona folder or document contain
 #### Response data used
 
 - Same document-list data documented in call 6.
+
+### Document metadata: GET `/files/{file_id}/documents/{document_id}`
+
+#### Used by
+
+- `GET /processes/{process_id}/documents/{document_id}`
+
+#### Request headers
+
+- `X-Gestiona-Access-Token` required
+
+#### Response data used
+
+- `id`, `name`, `type`, `version`, `metadata_language`
+- On errors, nonblank `details` entries are joined with `; `; `description` is the fallback.
 
 ### 8. GET `/content/small/documentinstances/{document_id}`
 

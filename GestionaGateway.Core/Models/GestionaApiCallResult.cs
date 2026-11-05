@@ -19,4 +19,7 @@ public sealed record GestionaApiCallResult(
 public sealed record GestionaApiCallResult<T>(
     int StatusCode,
     bool Success,
-    T? Value);
+    T? Value)
+{
+    public string? ErrorMessage { get; init; }
+}
