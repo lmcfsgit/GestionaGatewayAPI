@@ -15,6 +15,44 @@ namespace GestionaGatewayAPI.Controllers;
 [Route("processes")]
 public sealed class ProcessesController : ControllerBase
 {
+    /// <summary>
+    /// Gets a third associated with a Gestiona process file.
+    /// </summary>
+    [HttpGet("{process_id}/third/{third_id}")]
+    public async Task<ActionResult<GatewayResponse>> GetThird(
+        [FromRoute(Name = "process_id")] string processId,
+        [FromRoute(Name = "third_id")] string thirdId,
+        [FromQuery(Name = "operationId")] string? operationId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(thirdId) ||
+            processId == "{{process_id}}" || thirdId == "{{third_id}}")
+        {
+            return CreateThirdErrorResponse(400, GetThirdFailureKind.Validation,
+                "process_id and third_id must be provided and resolved.");
+        }
+
+        var result = await _gestionaProcessService.GetProcessThirdAsync(
+            processId, thirdId, GestionaRequestHeaders.GetAccessToken(Request), cancellationToken);
+        if (!result.Success)
+        {
+            var statusCode = result.FailureKind switch
+            {
+                GetThirdFailureKind.Configuration => 500,
+                GetThirdFailureKind.Validation => 400,
+                GetThirdFailureKind.NotFound => 404,
+                _ => result.UpstreamStatusCode ?? 502
+            };
+            return CreateThirdErrorResponse(statusCode, result.FailureKind, result.ErrorMessage ?? "Unknown error.");
+        }
+
+        return Ok(new GatewayResponse(operationId, true, result.Third!));
+
+        ActionResult<GatewayResponse> CreateThirdErrorResponse(int statusCode, GetThirdFailureKind kind, string message)
+            => StatusCode(statusCode, new GatewayResponse(operationId, false,
+                new ThirdError(statusCode, ReasonPhrases.GetReasonPhrase(statusCode), kind.ToString(), message)));
+    }
+
     [HttpPut("{process_id}/documents/{document_id}")]
     public async Task<ActionResult<GatewayResponse>> UpdateDocument(
         [FromRoute(Name = "process_id")] string processId,

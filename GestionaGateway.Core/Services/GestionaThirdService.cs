@@ -72,10 +72,7 @@ public sealed class GestionaThirdService : IGestionaThirdService
         }
 
         var thirdResult = await _gestionaApiClient.GetThirdAsync(
-            gestionaApiBaseUrl,
-            accessToken,
-            thirdId,
-            cancellationToken);
+            gestionaApiBaseUrl, accessToken, thirdId, cancellationToken);
 
         if (!thirdResult.Success)
         {

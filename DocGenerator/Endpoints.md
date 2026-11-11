@@ -1,6 +1,6 @@
 # Gestiona Gateway API Documentation
 
-<center>Versão 2.0.1</center>
+<center>Versão 2.1.0</center>
 
 ## Index
 
@@ -74,6 +74,7 @@
 - [30. Get a process procedure-data value](#30-get-processesprocess_idprocedure-datareference_id)
 - [31. List document circuit templates](#31-get-processesprocess_iddocumentsdocument_idcircuittemplates)
 - [32. Create a document circuit from a template](#32-post-processesprocess_iddocumentsdocument_idcircuit)
+- [33. Get a process third party by ID](#33-get-processesprocess_idthirdthird_id)
 
 ## Models
 
@@ -304,8 +305,9 @@ Used inside `GatewayResponse.result` on third lookup success.
 
 #### Field notes
 
-- Address fields are obtained from Gestiona `GET /thirds/{third_id}/default-address` after the base third is retrieved.
-- `block`, `stair`, `floor`, `door`, and `extension` are mapped from the corresponding fields in the default-address response.
+- For `/thirds` lookups, address fields are obtained from Gestiona `GET /thirds/{third_id}/default-address` after the base third is retrieved.
+- For `/thirds` lookups, `block`, `stair`, `floor`, `door`, and `extension` are mapped from the corresponding fields in the default-address response.
+- For `/processes/{process_id}/third/{third_id}`, all data comes from the file-specific third-party response: `name` maps to `full_name`, `zip` maps to `zip_code`, and `parish_code` is extracted from the `parish` link. The returned `id` is the file-specific third-party ID.
 
 ### ThirdError
 
@@ -2754,3 +2756,79 @@ circuit. The endpoint supports the shared `X-User-Access-Token` header.
 Failures from either upstream call use nonblank `details` entries joined with
 `; ` as `result.message`, falling back to `description` and then the default
 gateway message.
+
+### 33. GET `/processes/{process_id}/third/{third_id}`
+
+Gets a third party associated with a Gestiona process file, including its file-specific address.
+
+#### Route parameters
+
+- `process_id` required: the Gestiona file ID.
+- `third_id` required: the file-specific third-party ID, which can differ from the global third ID in the upstream `third` link.
+
+#### Query parameters
+
+- `operationId` optional: echoed in the response envelope.
+
+#### Request body model
+
+None.
+
+#### Upstream calls
+
+1. `GET /files/{process_id}/thirdparties/{third_id}`
+
+The endpoint supports the shared `X-User-Access-Token` header. It populates `ThirdResult` directly from this response and makes no default-address lookup.
+
+#### Success response
+
+- HTTP `200 OK`
+- Body model: `GatewayResponse`
+- `result` shape: `ThirdResult`
+
+#### Success example
+
+```json
+{
+  "operationId": "op-01",
+  "success": true,
+  "result": {
+    "full_name": "Luis Manuel Silva",
+    "first_name": "Luis",
+    "second_surname": "Silva",
+    "nif_country": null,
+    "id": "4c3adced-2912-42e3-a17d-fc08644cad2a",
+    "nif": "196510880",
+    "type": "PHISIC",
+    "email": "luis.silva@medidata.pt",
+    "mobile": "913347827",
+    "nif_type": "NIF",
+    "address": "Cancelas",
+    "number": "184",
+    "block": "33",
+    "stair": "123",
+    "floor": "1",
+    "door": "56",
+    "extension": "b",
+    "zip_code": "4440368",
+    "province": "PORTO",
+    "country": "Portugal",
+    "type_of_road": "CL",
+    "zone": "Valongo",
+    "parish_code": "131506"
+  }
+}
+```
+
+#### Error response
+
+- HTTP `400`, `404`, `500`, `502`, or propagated upstream error status
+- Body model: `GatewayResponse`
+- `result` shape: `ThirdError`
+
+#### Notes
+
+- Blank or unresolved route parameters such as `{{process_id}}` or `{{third_id}}` return HTTP `400`.
+- A missing file-specific third party returns HTTP `404`.
+- `nif_country` remains null when absent from the upstream response.
+- Upstream fields without corresponding `ThirdResult` properties, including `relation`, `first_surname`, `notification_channel`, and `version`, are omitted.

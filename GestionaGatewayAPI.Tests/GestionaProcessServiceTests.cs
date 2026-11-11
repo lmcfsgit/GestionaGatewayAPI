@@ -11,6 +11,66 @@ namespace GestionaGatewayAPI.Tests;
 
 public sealed class GestionaProcessServiceTests
 {
+    [Theory]
+    [InlineData("create")]
+    [InlineData("titles")]
+    [InlineData("open")]
+    public async Task CreateProcessAsync_ForwardsUpstreamErrorMessage(string failingStep)
+    {
+        const string description = "The process cannot be created.";
+        var apiClient = new TestGestionaApiClient
+        {
+            CreateProcessFileAsyncHandler = (baseUrl, token, activity, procedure, ct) =>
+                Task.FromResult(new GestionaApiCallResult<CreateProcessFileResponse?>(
+                    failingStep == "create" ? 400 : 200, failingStep != "create",
+                    new CreateProcessFileResponse
+                    {
+                        EntryDate = "1787608800",
+                        Links = [new GestionaLink("file-open", "https://gestiona.example/rest/files/file-1/open", null)]
+                    }) { ErrorMessage = failingStep == "create" ? description : null }),
+            GetSelectableTitlesAsyncHandler = (baseUrl, token, processId, ct) =>
+                Task.FromResult(new GestionaApiCallResult<SelectableTitlesResponse?>(
+                    failingStep == "titles" ? 400 : 200, failingStep != "titles", null)
+                    { ErrorMessage = failingStep == "titles" ? description : null }),
+            OpenProcessFileAsyncHandler = (baseUrl, token, href, request, ct) =>
+                Task.FromResult(new GestionaApiCallResult<OpenProcessFileResponse?>(400, false, null)
+                    { ErrorMessage = description })
+        };
+        var result = await CreateService(apiClient).CreateProcessAsync(new CreateProcessRequest
+        {
+            ActivityId = "activity-1", ProcedureId = "procedure-1", UserId = "user-1",
+            GroupId = "group-1", FreeSubject = "Subject"
+        }, null, CancellationToken.None);
+        Assert.False(result.Success);
+        Assert.Equal(description, result.ErrorMessage);
+        Assert.Equal(400, result.UpstreamStatusCode);
+    }
+
+    [Theory]
+    [InlineData(200, true, GetThirdFailureKind.None)]
+    [InlineData(404, false, GetThirdFailureKind.NotFound)]
+    [InlineData(503, false, GetThirdFailureKind.Upstream)]
+    public async Task GetProcessThirdAsync_UsesOnlyFileThirdEndpoint(int status, bool success, GetThirdFailureKind kind)
+    {
+        var third = System.Text.Json.JsonSerializer.Deserialize<Third>("""{"id":"relationship-1","address":"File address"}""")!;
+        var apiClient = new TestGestionaApiClient
+        {
+            GetProcessThirdAsyncHandler = (baseUrl, token, processId, thirdId, cancellationToken) =>
+            {
+                Assert.Equal("override-token", token);
+                Assert.Equal("file-1", processId);
+                Assert.Equal("relationship-1", thirdId);
+                return Task.FromResult(new GestionaApiCallResult<Third?>(status, success, success ? third : null));
+            }
+        };
+        var result = await CreateService(apiClient).GetProcessThirdAsync(
+            "file-1", "relationship-1", "override-token", CancellationToken.None);
+        Assert.Equal(success, result.Success);
+        Assert.Equal(kind, result.FailureKind);
+        if (success) Assert.Same(third, result.Third);
+        else Assert.Equal(status, result.UpstreamStatusCode);
+    }
+
     [Fact]
     public async Task UpdateProcessDocumentAsync_UsesOverrideTokenAndUpstreamVersion()
     {

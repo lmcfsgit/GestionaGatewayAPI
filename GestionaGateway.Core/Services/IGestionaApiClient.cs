@@ -210,6 +210,16 @@ public interface IGestionaApiClient
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Gets a third from the specified file's third-party collection.
+    /// </summary>
+    Task<GestionaApiCallResult<Third?>> GetProcessThirdAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string thirdId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Gets the third identifiers associated with a Gestiona process file.
     /// </summary>
     /// <param name="gestionaApiBaseUrl">The base URL of the Gestiona API.</param>

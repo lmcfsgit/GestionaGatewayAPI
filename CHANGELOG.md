@@ -2,6 +2,26 @@
 
 All notable changes to Gestiona Gateway API are documented in this file.
 
+## [2.1.0]
+
+### Added
+
+- Added `GET /processes/{process_id}/third/{third_id}` to retrieve a file-specific
+  third party from Gestiona `GET /files/{process_id}/thirdparties/{third_id}`.
+  The response populates the `Third` model directly, including address fields,
+  mapping `name` to `full_name`, `zip` to `zip_code`, and the parish link to
+  `parish_code`, while preserving the file-specific third-party ID.
+- Added debug logging of the upstream process-third response body and status,
+  including the process and third-party IDs.
+- Documented the new endpoint, field mappings, and response examples in
+  `DocGenerator/Endpoints.md`.
+
+### Fixed
+
+- Process creation failures now return the upstream `description` in
+  `result.message` for file creation, selectable-title lookup, and file opening,
+  retaining fallback messages when no description is available.
+
 ## [2.0.1]
 
 ### Changed

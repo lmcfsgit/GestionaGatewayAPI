@@ -12,6 +12,41 @@ namespace GestionaGateway.Core.Services;
 /// </summary>
 public sealed class GestionaProcessService : IGestionaProcessService
 {
+    /// <summary>
+    /// Gets a process third using its file-specific data and address.
+    /// </summary>
+    public async Task<GetThirdResult> GetProcessThirdAsync(
+        string processId, string thirdId, string? accessTokenOverride, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(processId) || string.IsNullOrWhiteSpace(thirdId) ||
+            processId == "{{process_id}}" || thirdId == "{{third_id}}")
+        {
+            return new(false, GetThirdFailureKind.Validation,
+                "processId and thirdId must be provided and resolved.", null, null);
+        }
+
+        var baseUrl = _gestionaOptions.GestionaApiBaseUrl;
+        var token = GestionaAccessTokenResolver.Resolve(_gestionaOptions, accessTokenOverride, _logger);
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(token))
+        {
+            return new(false, GetThirdFailureKind.Configuration,
+                "Gestiona API base URL or access token is not configured.", null, null);
+        }
+
+        var result = await _gestionaApiClient.GetProcessThirdAsync(
+            baseUrl, token, processId, thirdId, cancellationToken);
+        if (!result.Success || result.Value is null)
+        {
+            return new(false, GetThirdFailureKindForStatus(result.StatusCode),
+                "Failed to get process third from Gestiona.", null, GetUpstreamErrorStatusCode(result.StatusCode));
+        }
+
+        return new(true, GetThirdFailureKind.None, null, result.Value, null);
+    }
+
+    private static GetThirdFailureKind GetThirdFailureKindForStatus(int statusCode)
+        => statusCode is 204 or 404 ? GetThirdFailureKind.NotFound : GetThirdFailureKind.Upstream;
+
     public async Task<GetProcessDocumentMetadataResult> UpdateProcessDocumentAsync(
         string processId, string documentId, UpdateProcessDocumentRequest? request,
         string? accessTokenOverride, CancellationToken cancellationToken)
@@ -1985,7 +2020,8 @@ public sealed class GestionaProcessService : IGestionaProcessService
         {
             return CreateProcessFailure(
                 CreateProcessFailureKind.Upstream,
-                "Failed to create Gestiona process file.",
+                string.IsNullOrWhiteSpace(createFileResult.ErrorMessage)
+                    ? "Failed to create Gestiona process file." : createFileResult.ErrorMessage,
                 GetUpstreamErrorStatusCode(createFileResult.StatusCode));
         }
 
@@ -2029,7 +2065,8 @@ public sealed class GestionaProcessService : IGestionaProcessService
         {
             return CreateProcessFailure(
                 CreateProcessFailureKind.Upstream,
-                "Failed to get Gestiona selectable titles.",
+                string.IsNullOrWhiteSpace(selectableTitlesResult.ErrorMessage)
+                    ? "Failed to get Gestiona selectable titles." : selectableTitlesResult.ErrorMessage,
                 GetUpstreamErrorStatusCode(selectableTitlesResult.StatusCode));
         }
 
@@ -2059,9 +2096,11 @@ public sealed class GestionaProcessService : IGestionaProcessService
                 .ToArray();
             return CreateProcessFailure(
                 CreateProcessFailureKind.Upstream,
-                details is { Length: > 0 }
-                    ? string.Join("; ", details)
-                    : "Failed to open Gestiona process file.",
+                !string.IsNullOrWhiteSpace(openFileResult.ErrorMessage)
+                    ? openFileResult.ErrorMessage
+                    : details is { Length: > 0 }
+                        ? string.Join("; ", details)
+                        : "Failed to open Gestiona process file.",
                 GetUpstreamErrorStatusCode(openFileResult.StatusCode));
         }
 

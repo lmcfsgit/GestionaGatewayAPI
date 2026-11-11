@@ -7,6 +7,9 @@ namespace GestionaGateway.Core.Services;
 /// </summary>
 public interface IGestionaProcessService
 {
+    Task<GetThirdResult> GetProcessThirdAsync(
+        string processId, string thirdId, string? accessTokenOverride, CancellationToken cancellationToken);
+
     Task<GetProcessDocumentMetadataResult> UpdateProcessDocumentAsync(
         string processId, string documentId, UpdateProcessDocumentRequest? request,
         string? accessTokenOverride, CancellationToken cancellationToken);

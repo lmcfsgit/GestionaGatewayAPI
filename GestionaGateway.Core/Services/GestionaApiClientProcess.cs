@@ -10,6 +10,67 @@ namespace GestionaGateway.Core.Services;
 
 public sealed partial class GestionaApiClient
 {
+    /// <summary>
+    /// Gets a file-specific third and its address from Gestiona.
+    /// </summary>
+    public async Task<GestionaApiCallResult<Third?>> GetProcessThirdAsync(
+        string gestionaApiBaseUrl,
+        string accessToken,
+        string processId,
+        string thirdId,
+        CancellationToken cancellationToken)
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(NormalizeBaseUrl(gestionaApiBaseUrl), UriKind.Absolute);
+        httpClient.DefaultRequestHeaders.Add("X-Gestiona-Access-Token", accessToken);
+        var route = $"{FilesRoute}/{Uri.EscapeDataString(processId)}/thirdparties/{Uri.EscapeDataString(thirdId)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        LogDeprecatedHeader(response, nameof(GetProcessThirdAsync));
+        var responseBody = await ReadResponseBodyAsync(response, cancellationToken);
+        _logger.LogDebug(
+            "({Method}) process third response: ProcessId={ProcessId}, ThirdId={ThirdId}, StatusCode={StatusCode}, Body={Body}",
+            nameof(GetProcessThirdAsync),
+            processId,
+            thirdId,
+            response.StatusCode,
+            responseBody);
+        if (!response.IsSuccessStatusCode)
+        {
+            return new((int)response.StatusCode, false, null);
+        }
+
+        if (string.IsNullOrWhiteSpace(responseBody) || responseBody is "<empty>" or "<no content>")
+        {
+            return new(404, false, null);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(responseBody);
+            if (document.RootElement.ValueKind == JsonValueKind.Null)
+            {
+                return new((int)response.StatusCode, true, null);
+            }
+
+            var third = document.RootElement.Deserialize<Third>();
+            var links = document.RootElement.Deserialize<ProcessThirdPartyLinkItem>();
+            var parish = links?.Links?.FirstOrDefault(link => link.Rel == "parish");
+            return new((int)response.StatusCode, true, third! with
+            {
+                FullName = document.RootElement.TryGetProperty("name", out var name) ? name.GetString() : null,
+                ZipCode = document.RootElement.TryGetProperty("zip", out var zip) ? zip.GetString() : null,
+                ParishCode = GetLastHrefSegment(parish?.Href)
+            });
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "({Method}) failed to parse Gestiona process third parties response body.", nameof(GetProcessThirdAsync));
+            return new((int)response.StatusCode, false, null);
+        }
+    }
+
+
     public async Task<GestionaApiCallResult<ProcessDocumentMetadata?>> UpdateProcessDocumentAsync(
         string gestionaApiBaseUrl, string accessToken, string processId, string documentId,
         UpdateProcessDocumentRequest request, CancellationToken cancellationToken)
@@ -472,7 +533,10 @@ public sealed partial class GestionaApiClient
                 nameof(CreateProcessFileAsync),
                 response.StatusCode,
                 FormatJsonForLog(responseBody));
-            return new GestionaApiCallResult<CreateProcessFileResponse?>((int)response.StatusCode, false, responseModel);
+            return new GestionaApiCallResult<CreateProcessFileResponse?>((int)response.StatusCode, false, responseModel)
+            {
+                ErrorMessage = GetUpstreamErrorMessage(responseBody, preferDescription: true)
+            };
         }
 
         return new GestionaApiCallResult<CreateProcessFileResponse?>((int)response.StatusCode, true, responseModel);
@@ -522,7 +586,10 @@ public sealed partial class GestionaApiClient
                 nameof(GetSelectableTitlesAsync),
                 response.StatusCode,
                 FormatJsonForLog(responseBody));
-            return new GestionaApiCallResult<SelectableTitlesResponse?>((int)response.StatusCode, false, null);
+            return new GestionaApiCallResult<SelectableTitlesResponse?>((int)response.StatusCode, false, null)
+            {
+                ErrorMessage = GetUpstreamErrorMessage(responseBody, preferDescription: true)
+            };
         }
 
         var responseModel = DeserializeResponse<SelectableTitlesResponse>(
@@ -618,7 +685,10 @@ public sealed partial class GestionaApiClient
             var errorResponse = DeserializeResponse<OpenProcessFileResponse>(
                 responseBody,
                 nameof(OpenProcessFileAsync));
-            return new GestionaApiCallResult<OpenProcessFileResponse?>((int)response.StatusCode, false, errorResponse);
+            return new GestionaApiCallResult<OpenProcessFileResponse?>((int)response.StatusCode, false, errorResponse)
+            {
+                ErrorMessage = GetUpstreamErrorMessage(responseBody, preferDescription: true)
+            };
         }
 
         var responseModel = DeserializeResponse<OpenProcessFileResponse>(

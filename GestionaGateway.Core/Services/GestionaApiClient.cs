@@ -315,7 +315,7 @@ public sealed partial class GestionaApiClient : IGestionaApiClient
             : responseBody;
     }
 
-    private static string? GetUpstreamErrorMessage(string responseBody)
+    private static string? GetUpstreamErrorMessage(string responseBody, bool preferDescription = false)
     {
         try
         {
@@ -324,6 +324,13 @@ public sealed partial class GestionaApiClient : IGestionaApiClient
             if (root.ValueKind != JsonValueKind.Object)
             {
                 return null;
+            }
+
+            if (preferDescription && root.TryGetProperty("description", out var preferredDescription) &&
+                preferredDescription.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(preferredDescription.GetString()))
+            {
+                return preferredDescription.GetString();
             }
 
             if (root.TryGetProperty("details", out var details) && details.ValueKind == JsonValueKind.Array)

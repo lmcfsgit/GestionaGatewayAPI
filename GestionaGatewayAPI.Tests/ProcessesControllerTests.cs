@@ -509,6 +509,10 @@ public sealed class ProcessesControllerTests
             throw new NotImplementedException();
         }
 
+        public Task<GetThirdResult> GetProcessThirdAsync(
+            string processId, string thirdId, string? accessTokenOverride, CancellationToken cancellationToken)
+            => Task.FromResult(new GetThirdResult(true, GetThirdFailureKind.None, null, null, null));
+
         public Task<GetProcessThirdsResult> GetProcessThirdsAsync(
             string processId,
             bool resolveFileIdFromProcessCode,

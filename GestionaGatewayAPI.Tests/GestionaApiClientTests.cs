@@ -10,6 +10,75 @@ namespace GestionaGatewayAPI.Tests;
 public sealed class GestionaApiClientTests
 {
     [Theory]
+    [InlineData("create")]
+    [InlineData("titles")]
+    [InlineData("open")]
+    public async Task ProcessCreationCalls_WhenRejected_PreferUpstreamDescription(string step)
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent(
+                """{"description":"The process cannot be created.","details":["Additional detail"]}""",
+                Encoding.UTF8, "application/json")
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+        string? message;
+        if (step == "create")
+            message = (await client.CreateProcessFileAsync("https://gestiona.example/rest", "token", "activity", "procedure", CancellationToken.None)).ErrorMessage;
+        else if (step == "titles")
+            message = (await client.GetSelectableTitlesAsync("https://gestiona.example/rest", "token", "file", CancellationToken.None)).ErrorMessage;
+        else
+            message = (await client.OpenProcessFileAsync("https://gestiona.example/rest", "token", "https://gestiona.example/rest/files/file/open",
+                new OpenProcessFileRequest(), CancellationToken.None)).ErrorMessage;
+        Assert.Equal("The process cannot be created.", message);
+    }
+
+    [Fact]
+    public async Task GetProcessThirdAsync_MapsFileSpecificDataWithoutFollowingThirdLink()
+    {
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            Assert.Equal(HttpMethod.Get, request.Method);
+            Assert.Equal("https://gestiona.example/rest/files/file%2F123/thirdparties/relationship%2F2", request.RequestUri!.AbsoluteUri);
+            Assert.Equal("override-token", request.Headers.GetValues("X-Gestiona-Access-Token").Single());
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"id":"relationship/2","name":"Luis Manuel Silva","nif":"196510880","first_name":"Luis","second_surname":"Silva","type":"PHISIC","nif_type":"NIF","email":"file@example.com","mobile":"913347827","address":"Cancelas","number":"184","block":"33","stair":"123","floor":"1","door":"56","extension":"b","country":"Portugal","zip":"4440368","zone":"Valongo","province":"PORTO","type_of_road":"CL","links":[{"rel":"third","href":"/thirds/global-third"},{"rel":"parish","href":"https://gestiona.example/rest/parishes/131506"}]}""",
+                    Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new GestionaApiClient(new StubHttpClientFactory(handler), NullLogger<GestionaApiClient>.Instance);
+        var result = await client.GetProcessThirdAsync("https://gestiona.example/rest", "override-token",
+            "file/123", "relationship/2", CancellationToken.None);
+        Assert.True(result.Success);
+        var third = result.Value!;
+        Assert.Equal("relationship/2", third.Id);
+        Assert.Equal("Luis Manuel Silva", third.FullName);
+        Assert.Equal("4440368", third.ZipCode);
+        Assert.Equal("131506", third.ParishCode);
+        Assert.Equal("Cancelas", third.Address);
+        Assert.Equal("184", third.Number);
+        Assert.Equal("33", third.Block);
+        Assert.Equal("123", third.Stair);
+        Assert.Equal("1", third.Floor);
+        Assert.Equal("56", third.Door);
+        Assert.Equal("b", third.Extension);
+        Assert.Equal("Portugal", third.Country);
+        Assert.Equal("Valongo", third.Zone);
+        Assert.Equal("PORTO", third.Province);
+        Assert.Equal("CL", third.TypeOfRoad);
+        Assert.Equal("196510880", third.Nif);
+        Assert.Equal("Luis", third.FirstName);
+        Assert.Equal("Silva", third.SecondSurname);
+        Assert.Equal("PHISIC", third.Type);
+        Assert.Equal("NIF", third.NifType);
+        Assert.Equal("file@example.com", third.Email);
+        Assert.Equal("913347827", third.Mobile);
+        Assert.Null(third.NifCountry);
+    }
+
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task UpdateProcessDocumentAsync_ForwardsBodyAndReturnsUpdatedMetadata(bool includeMetadata)

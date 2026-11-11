@@ -240,6 +240,12 @@ internal sealed class TestGestionaApiClient : IGestionaApiClient
         return Invoke<GestionaApiCallResult<DownloadedDocument?>>(DownloadDocumentAsyncHandler, gestionaApiBaseUrl, accessToken, documentId, cancellationToken);
     }
 
+    public Func<string, string, string, string, CancellationToken, Task<GestionaApiCallResult<Third?>>>? GetProcessThirdAsyncHandler { get; init; }
+
+    public Task<GestionaApiCallResult<Third?>> GetProcessThirdAsync(
+        string baseUrl, string token, string processId, string thirdId, CancellationToken cancellationToken)
+        => GetProcessThirdAsyncHandler!(baseUrl, token, processId, thirdId, cancellationToken);
+
     public Task<GestionaApiCallResult<IReadOnlyList<string>>> GetProcessThirdIdsAsync(
         string gestionaApiBaseUrl,
         string accessToken,
